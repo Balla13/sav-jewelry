@@ -12,9 +12,11 @@ type Props = { product: Product };
 
 export default function ProductCard({ product }: Props) {
   const [hover, setHover] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const firstImage = product.images?.[0] ?? product.image ?? "";
   const secondImage = product.images?.[1] ?? firstImage;
   const showComparePrice = product.compareAtPriceUsd != null && product.compareAtPriceUsd > product.priceUsd;
+  const showImage = firstImage && !imgError;
 
   return (
     <Link
@@ -23,8 +25,8 @@ export default function ProductCard({ product }: Props) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-section">
-        {firstImage ? (
+      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-noir-100">
+        {showImage ? (
           <Image
             src={firstImage}
             alt={product.name}
@@ -32,9 +34,14 @@ export default function ProductCard({ product }: Props) {
             className="object-cover object-center transition duration-500 ease-out group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             unoptimized
+            onError={() => setImgError(true)}
           />
-        ) : null}
-        {firstImage && product.images && product.images.length > 1 && (
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-noir-400">
+            <span className="text-sm font-medium uppercase tracking-widest">{product.name}</span>
+          </div>
+        )}
+        {showImage && product.images && product.images.length > 1 && (
           <motion.div
             className="absolute inset-0 overflow-hidden"
             initial={false}

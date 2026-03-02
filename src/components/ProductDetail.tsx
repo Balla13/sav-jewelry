@@ -130,45 +130,45 @@ export default function ProductDetail({ product, uniquePieceLabel, shippingInsur
               </p>
             )}
 
-            <div className="mt-10">
-              <p className="text-label font-medium uppercase tracking-widest text-noir-500">
+            <div className="mt-10 rounded-2xl border border-noir-900/8 bg-noir-50/60 px-6 py-6">
+              <p className="text-xs font-medium uppercase tracking-widest text-noir-500">
                 {t("priceLabel")}
               </p>
-              <div className="mt-3 flex flex-wrap items-baseline gap-3">
+              <div className="mt-2 flex flex-wrap items-baseline gap-3">
                 {showComparePrice && (
-                  <span className="text-lg font-display font-medium text-noir-400 line-through">
+                  <span className="text-base font-display font-medium text-noir-400 line-through">
                     {formatPrice(product.compareAtPriceUsd!)}
                   </span>
                 )}
-                <p className="text-2xl font-display font-semibold text-noir-900">
+                <span className="text-2xl font-display font-semibold tracking-tight text-noir-900">
                   {formatPrice(product.priceUsd)}
+                </span>
+              </div>
+
+              {shippingInsuredText && (
+                <p className="mt-4 text-sm leading-relaxed text-noir-600">
+                  {shippingInsuredText}
+                </p>
+              )}
+
+              <div className="mt-4 border-t border-noir-900/8 pt-4">
+                <p className="text-xs font-medium uppercase tracking-widest text-noir-500">
+                  {t("shipsBy")}
+                </p>
+                <p className="mt-1 text-base font-medium capitalize text-noir-800">
+                  {shipsByDate}
+                </p>
+                <p className="mt-3 flex items-center gap-2 text-sm leading-relaxed text-noir-700">
+                  <Truck className="h-4 w-4 shrink-0 text-noir-500" aria-hidden />
+                  {t("shippingAndReturns")}
                 </p>
               </div>
-            </div>
-
-            {shippingInsuredText && (
-              <p className="mt-4 text-sm text-noir-600">
-                {shippingInsuredText}
-              </p>
-            )}
-
-            <div className="mt-6 rounded-2xl border border-noir-900/10 bg-noir-50/50 px-4 py-4">
-              <p className="text-label font-medium uppercase tracking-widest text-noir-500">
-                {t("shipsBy")}
-              </p>
-              <p className="mt-1 font-display text-noir-900 capitalize">
-                {shipsByDate}
-              </p>
-              <p className="mt-3 flex items-center gap-2 text-sm text-noir-700">
-                <Truck className="h-4 w-4 shrink-0 text-noir-500" aria-hidden />
-                {t("shippingAndReturns")}
-              </p>
             </div>
 
             <button
               type="button"
               onClick={handleAddToCart}
-              className="mt-10 inline-flex w-full items-center justify-center gap-2 rounded-full border border-noir-900 bg-noir-900 py-4 text-label font-medium uppercase tracking-widest text-white transition hover:bg-noir-800 hover:shadow-lg sm:w-auto sm:px-10"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full border border-noir-900 bg-noir-900 py-4 text-sm font-semibold uppercase tracking-wider text-white transition hover:bg-noir-800 hover:shadow-lg sm:w-auto sm:px-10"
             >
               <ShoppingBag className="h-4 w-4" aria-hidden />
               {tCart("addToCart")}
