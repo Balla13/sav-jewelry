@@ -128,22 +128,23 @@ export default function AdminInventoryPage() {
 
   const categories = Array.from(new Set(products.map((p) => p.category))).sort();
 
-  const sortedProducts = [...products]
-    .filter((p) => (categoryFilter === "all" ? true : p.category === categoryFilter))
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "price-asc":
-          return a.priceUsd - b.priceUsd;
-        case "price-desc":
-          return b.priceUsd - a.priceUsd;
-        case "stock-asc":
-          return (a.stockQuantity ?? 0) - (b.stockQuantity ?? 0);
-        case "stock-desc":
-          return (b.stockQuantity ?? 0) - (a.stockQuantity ?? 0);
-        default:
-          return 0;
-      }
-    });
+  const filteredProducts =
+    categoryFilter === "all" ? products : products.filter((p) => p.category === categoryFilter);
+
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    switch (sortBy) {
+      case "price-asc":
+        return a.priceUsd - b.priceUsd;
+      case "price-desc":
+        return b.priceUsd - a.priceUsd;
+      case "stock-asc":
+        return (a.stockQuantity ?? 0) - (b.stockQuantity ?? 0);
+      case "stock-desc":
+        return (b.stockQuantity ?? 0) - (a.stockQuantity ?? 0);
+      default:
+        return 0;
+    }
+  });
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
