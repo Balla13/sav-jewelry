@@ -106,3 +106,41 @@ export async function sendAbandonedCartEmail(params: {
   });
   return error ? { error: error.message } : {};
 }
+
+const CONTACT_TO_EMAIL = "eduardobalassiano13@gmail.com";
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export async function sendContactFormEmail(params: {
+  name: string;
+  email: string;
+  reason: string;
+  message: string;
+}): Promise<{ error?: string }> {
+  if (!resend) return { error: "RESEND_API_KEY not set" };
+  const { name, email, reason, message } = params;
+  const html = `
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+      <p><strong>New contact form message – SÁV+ Jewelry</strong></p>
+      <p><strong>Name:</strong> ${escapeHtml(name)}</p>
+      <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+      <p><strong>Reason:</strong> ${escapeHtml(reason)}</p>
+      <p><strong>Message:</strong></p>
+      <p style="white-space: pre-wrap;">${escapeHtml(message)}</p>
+    </div>
+  `;
+  const { error } = await resend.emails.send({
+    from: fromEmail,
+    to: [CONTACT_TO_EMAIL],
+    replyTo: email,
+    subject: `Contact: ${reason} – ${name}`,
+    html,
+  });
+  return error ? { error: error.message } : {};
+}

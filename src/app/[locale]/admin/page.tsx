@@ -169,14 +169,20 @@ function AdminPageContent() {
     e.preventDefault();
     setError("");
     setSuccess("");
+    setSubmitting(true);
     const variations = form.variations.split(",").map((v) => v.trim()).filter(Boolean);
     let images: string[];
     if (imageFiles.length > 0) {
       const fd = new FormData();
       try {
-        const cropped = await Promise.all(imageFiles.map((f) => cropImageToSquare(f)));
+        const cropped: File[] = [];
+        for (const f of imageFiles) {
+          const file = await cropImageToSquare(f);
+          cropped.push(file);
+        }
         cropped.forEach((f) => fd.append("images", f));
       } catch (err) {
+        setSubmitting(false);
         setError("Failed to process images. Use square (1:1) images.");
         return;
       }
@@ -187,6 +193,7 @@ function AdminPageContent() {
       });
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok) {
+        setSubmitting(false);
         setError(uploadData.error || "Upload failed");
         return;
       }
@@ -195,10 +202,10 @@ function AdminPageContent() {
       images = form.imageUrls.split("\n").map((u) => u.trim()).filter(Boolean);
     }
     if (!images.length) {
+      setSubmitting(false);
       setError("At least one image is required.");
       return;
     }
-    setSubmitting(true);
     const payload = {
       name: form.name.trim(),
       description: form.description.trim(),

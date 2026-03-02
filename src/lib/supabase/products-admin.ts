@@ -42,7 +42,8 @@ export async function updateProductAdmin(id: string, product: Partial<Omit<Produ
     if (product.priceUsd != null) payload.price_usd = product.priceUsd;
     if (product.stockQuantity != null) payload.stock_quantity = product.stockQuantity;
     if (product.freeShipping != null) payload.free_shipping = product.freeShipping;
-    if (product.images != null) payload.images = product.images;
+    if (product.images != null && product.images.length > 0) payload.images = product.images;
+    else if (product.image != null && product.image.trim() !== "") payload.images = [product.image.trim()];
     if (product.variations != null) payload.variations = product.variations;
     const { error } = await supabase.from("products").update(payload).eq("id", id);
     if (error) return { error: error.message };

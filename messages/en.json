@@ -139,7 +139,20 @@
   },
   "contact": {
     "title": "Contact Us",
-    "content": "We would love to hear from you. For inquiries about orders, pieces, or partnerships, please reach out. Email: contact@savjewelry.shop — We aim to respond within 24 business hours."
+    "content": "We would love to hear from you. Send us a message below and we'll get back to you within 24 business hours.",
+    "name": "Name",
+    "email": "Email",
+    "reason": "Reason",
+    "message": "Message",
+    "send": "Send message",
+    "sending": "Sending...",
+    "success": "Message sent. We'll reply soon.",
+    "error": "Could not send. Try again or email contact@savjewelry.shop.",
+    "reasonOrder": "Order / purchase",
+    "reasonStatus": "Order status",
+    "reasonProduct": "Product question",
+    "reasonPartnership": "Partnership / collaboration",
+    "reasonOther": "Other"
   },
   "checkout": {
     "checkout": "Checkout",

@@ -139,7 +139,20 @@
   },
   "contact": {
     "title": "Contacto",
-    "content": "Nos encantaría saber de usted. Para consultas sobre pedidos, piezas o colaboraciones, escríbanos. Email: contact@savjewelry.shop — Respondemos en un plazo de 24 horas hábiles."
+    "content": "Nos encantaría saber de usted. Envíenos un mensaje y le responderemos en un plazo de 24 horas hábiles.",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "reason": "Motivo",
+    "message": "Mensaje",
+    "send": "Enviar mensaje",
+    "sending": "Enviando...",
+    "success": "Mensaje enviado. Le responderemos pronto.",
+    "error": "No se pudo enviar. Intente de nuevo o escriba a contact@savjewelry.shop.",
+    "reasonOrder": "Pedido / compra",
+    "reasonStatus": "Estado del pedido",
+    "reasonProduct": "Consulta sobre producto",
+    "reasonPartnership": "Colaboración / partnership",
+    "reasonOther": "Otro"
   },
   "checkout": {
     "checkout": "Pago",

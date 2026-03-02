@@ -95,17 +95,29 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { id, price_usd, stock_quantity, free_shipping, ...rest } = body as {
+    const {
+      id,
+      price_usd,
+      stock_quantity,
+      free_shipping,
+      image,
+      images,
+      ...rest
+    } = body as {
       id: string;
       price_usd?: number;
       stock_quantity?: number;
       free_shipping?: boolean;
+      image?: string;
+      images?: string[];
     } & Partial<Product>;
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const update: Partial<Omit<Product, "id">> = { ...rest };
     if (price_usd != null) update.priceUsd = Number(price_usd);
     if (typeof stock_quantity === "number" && stock_quantity >= 0) update.stockQuantity = Math.floor(stock_quantity);
     if (free_shipping !== undefined) update.freeShipping = free_shipping === true;
+    if (Array.isArray(images) && images.length > 0) update.images = images;
+    else if (typeof image === "string" && image.trim()) update.image = image.trim();
 
     const result = await updateProductAdmin(id, update);
     if (result.error) {
