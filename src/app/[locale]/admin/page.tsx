@@ -304,6 +304,12 @@ function AdminPageContent() {
             Dashboard
           </Link>
           <Link
+            href="/admin/inventory"
+            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
+          >
+            {t("inventory")}
+          </Link>
+          <Link
             href="/admin/settings"
             className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
           >
@@ -317,36 +323,6 @@ function AdminPageContent() {
           </Link>
         </div>
       </div>
-
-      {products.length > 0 && !editingId && (
-        <div className="mb-8 rounded-2xl border border-noir-900/10 bg-section p-4">
-          <h2 className="mb-4 font-display text-lg font-medium text-noir-900">{t("inventory")}</h2>
-          <ul className="space-y-2">
-            {products.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-noir-900/5 bg-white px-4 py-3">
-                <span className="font-medium text-noir-900">{p.name}</span>
-                <span className="text-sm text-noir-600">{p.category} · ${p.priceUsd}</span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(p)}
-                    className="rounded-full bg-noir-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-noir-800"
-                  >
-                    {t("edit")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(p.id)}
-                    className="rounded-full border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                  >
-                    {t("delete")}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>

@@ -38,7 +38,8 @@ export async function getProductsFromSupabase(): Promise<Product[]> {
     const { data, error } = await supabase
       .from("products")
       .select("id, name, description, category, price_usd, stock_quantity, free_shipping, images, variations")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(500);
     if (error) throw error;
     if (!data || data.length === 0) return [];
     return data.map((row) => rowToProduct(row as ProductRow));
