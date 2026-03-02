@@ -11,6 +11,10 @@ export type Settings = {
   home_hero_banner_desktop_url: string | null;
   home_hero_banner_mobile_url: string | null;
   meta_pixel_id: string | null;
+  /** Etiqueta editável ex: "Peça única". Vazio = não exibe. */
+  unique_piece_label: string | null;
+  /** Ex: "Envio com seguro incluído". Vazio = não exibe. */
+  shipping_insured_text: string | null;
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -19,7 +23,7 @@ export async function getSettings(): Promise<Settings> {
     const { data, error } = await supabase
       .from("settings")
       .select(
-        "instagram_url, facebook_url, contact_email, contact_phone, shipping_fee_usd, site_logo_url, site_icon_url, home_hero_banner_desktop_url, home_hero_banner_mobile_url, meta_pixel_id"
+        "instagram_url, facebook_url, contact_email, contact_phone, shipping_fee_usd, site_logo_url, site_icon_url, home_hero_banner_desktop_url, home_hero_banner_mobile_url, meta_pixel_id, unique_piece_label, shipping_insured_text"
       )
       .eq("id", 1)
       .single();
@@ -35,6 +39,8 @@ export async function getSettings(): Promise<Settings> {
         home_hero_banner_desktop_url: null,
         home_hero_banner_mobile_url: null,
         meta_pixel_id: null,
+        unique_piece_label: null,
+        shipping_insured_text: null,
       };
     }
     const fee = data.shipping_fee_usd != null ? Number(data.shipping_fee_usd) : 5;
@@ -49,6 +55,8 @@ export async function getSettings(): Promise<Settings> {
       home_hero_banner_desktop_url: data.home_hero_banner_desktop_url ?? null,
       home_hero_banner_mobile_url: data.home_hero_banner_mobile_url ?? null,
       meta_pixel_id: data.meta_pixel_id ?? null,
+      unique_piece_label: data.unique_piece_label ?? null,
+      shipping_insured_text: data.shipping_insured_text ?? null,
     };
   } catch {
     return {
@@ -62,6 +70,8 @@ export async function getSettings(): Promise<Settings> {
       home_hero_banner_desktop_url: null,
       home_hero_banner_mobile_url: null,
       meta_pixel_id: null,
+      unique_piece_label: null,
+      shipping_insured_text: null,
     };
   }
 }
@@ -83,6 +93,8 @@ export async function updateSettings(updates: Partial<Settings>): Promise<{ erro
     if (updates.home_hero_banner_desktop_url !== undefined) payload.home_hero_banner_desktop_url = updates.home_hero_banner_desktop_url || null;
     if (updates.home_hero_banner_mobile_url !== undefined) payload.home_hero_banner_mobile_url = updates.home_hero_banner_mobile_url || null;
     if (updates.meta_pixel_id !== undefined) payload.meta_pixel_id = updates.meta_pixel_id || null;
+    if (updates.unique_piece_label !== undefined) payload.unique_piece_label = updates.unique_piece_label || null;
+    if (updates.shipping_insured_text !== undefined) payload.shipping_insured_text = updates.shipping_insured_text || null;
     const { error } = await supabase.from("settings").update(payload).eq("id", 1);
     if (error) return { error: error.message };
     return {};

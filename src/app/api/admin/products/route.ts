@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       images,
       variations,
       price_usd,
+      compare_at_price,
       stock_quantity,
       free_shipping,
     } = body as {
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
       images?: string[];
       variations?: string[];
       price_usd: number;
+      compare_at_price?: number | null;
       stock_quantity?: number;
       free_shipping?: boolean;
     };
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
     const image = imageList[0] || "";
     const priceUsd = Number(price_usd) || 0;
 
+    const compareAt = compare_at_price != null && Number(compare_at_price) > 0 ? Number(compare_at_price) : undefined;
     const product: Omit<Product, "id"> = {
       name: name.trim(),
       description: description.trim(),
@@ -73,6 +76,7 @@ export async function POST(request: NextRequest) {
       images: imageList,
       variations: Array.isArray(variations) ? variations : [],
       priceUsd,
+      compareAtPriceUsd: compareAt,
       stockQuantity: typeof stock_quantity === "number" ? stock_quantity : 0,
       freeShipping: free_shipping === true,
     };
@@ -98,6 +102,7 @@ export async function PATCH(request: NextRequest) {
     const {
       id,
       price_usd,
+      compare_at_price,
       stock_quantity,
       free_shipping,
       image,
@@ -106,6 +111,7 @@ export async function PATCH(request: NextRequest) {
     } = body as {
       id: string;
       price_usd?: number;
+      compare_at_price?: number | null;
       stock_quantity?: number;
       free_shipping?: boolean;
       image?: string;
@@ -114,6 +120,7 @@ export async function PATCH(request: NextRequest) {
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const update: Partial<Omit<Product, "id">> = { ...rest };
     if (price_usd != null) update.priceUsd = Number(price_usd);
+    if (compare_at_price !== undefined) update.compareAtPriceUsd = compare_at_price != null && Number(compare_at_price) > 0 ? Number(compare_at_price) : undefined;
     if (typeof stock_quantity === "number" && stock_quantity >= 0) update.stockQuantity = Math.floor(stock_quantity);
     if (free_shipping !== undefined) update.freeShipping = free_shipping === true;
     if (Array.isArray(images) && images.length > 0) update.images = images;

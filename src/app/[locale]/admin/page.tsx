@@ -73,6 +73,7 @@ function AdminPageContent() {
     description: "",
     category: "Rings",
     priceUsd: "",
+    compareAtPriceUsd: "",
     stockQuantity: "0",
     freeShipping: false,
     variations: "",
@@ -109,6 +110,7 @@ function AdminPageContent() {
         description: p.description,
         category: p.category,
         priceUsd: String(p.priceUsd),
+        compareAtPriceUsd: p.compareAtPriceUsd != null ? String(p.compareAtPriceUsd) : "",
         stockQuantity: String(p.stockQuantity ?? 0),
         freeShipping: p.freeShipping ?? false,
         variations: (p.variations || []).join(", "),
@@ -139,6 +141,7 @@ function AdminPageContent() {
       description: p.description,
       category: p.category,
       priceUsd: String(p.priceUsd),
+      compareAtPriceUsd: p.compareAtPriceUsd != null ? String(p.compareAtPriceUsd) : "",
       stockQuantity: String(p.stockQuantity ?? 0),
       freeShipping: p.freeShipping ?? false,
       variations: (p.variations || []).join(", "),
@@ -159,7 +162,7 @@ function AdminPageContent() {
       setProducts((prev) => prev.filter((p) => p.id !== id));
       if (editingId === id) {
         setEditingId(null);
-        setForm({ name: "", description: "", category: "Rings", priceUsd: "", stockQuantity: "0", freeShipping: false, variations: "", imageUrls: "" });
+        setForm({ name: "", description: "", category: "Rings", priceUsd: "", compareAtPriceUsd: "", stockQuantity: "0", freeShipping: false, variations: "", imageUrls: "" });
       }
       setSuccess(t("productDeleted"));
     } else setError(t("deleteFailed"));
@@ -206,6 +209,7 @@ function AdminPageContent() {
       setError("At least one image is required.");
       return;
     }
+    const compareAt = form.compareAtPriceUsd.trim() ? Math.max(0, Number(form.compareAtPriceUsd) || 0) : null;
     const payload = {
       name: form.name.trim(),
       description: form.description.trim(),
@@ -214,6 +218,7 @@ function AdminPageContent() {
       images,
       variations,
       price_usd: Number(form.priceUsd) || 0,
+      compare_at_price: compareAt != null && compareAt > 0 ? compareAt : null,
       stock_quantity: Math.max(0, parseInt(form.stockQuantity, 10) || 0),
       free_shipping: form.freeShipping,
     };
@@ -229,7 +234,7 @@ function AdminPageContent() {
       if (res.ok) {
         setSuccess(t("productUpdated"));
         setEditingId(null);
-        setForm({ name: "", description: "", category: "Rings", priceUsd: "", stockQuantity: "0", freeShipping: false, variations: "", imageUrls: "" });
+        setForm({ name: "", description: "", category: "Rings", priceUsd: "", compareAtPriceUsd: "", stockQuantity: "0", freeShipping: false, variations: "", imageUrls: "" });
         setImageFiles([]);
         if (fileInputRef.current) fileInputRef.current.value = "";
         router.replace(`/${locale}/admin`);
@@ -246,7 +251,7 @@ function AdminPageContent() {
       setSubmitting(false);
       if (res.ok) {
         setSuccess(t("productAdded"));
-        setForm({ name: "", description: "", category: "Rings", priceUsd: "", stockQuantity: "0", freeShipping: false, variations: "", imageUrls: "" });
+        setForm({ name: "", description: "", category: "Rings", priceUsd: "", compareAtPriceUsd: "", stockQuantity: "0", freeShipping: false, variations: "", imageUrls: "" });
         setImageFiles([]);
         if (fileInputRef.current) fileInputRef.current.value = "";
         fetchProducts();
@@ -358,7 +363,7 @@ function AdminPageContent() {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-noir-700">USD Price *</label>
+          <label className="block text-sm font-medium text-noir-700">Preço promocional (USD) *</label>
           <input
             type="number"
             min="0"
@@ -367,6 +372,18 @@ function AdminPageContent() {
             onChange={(e) => setForm((f) => ({ ...f, priceUsd: e.target.value }))}
             className="mt-1 w-full rounded-2xl border border-champagne-300 px-4 py-2.5 text-noir-900"
             required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-noir-700">Preço normal (USD) — opcional, exibe riscado</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.compareAtPriceUsd}
+            onChange={(e) => setForm((f) => ({ ...f, compareAtPriceUsd: e.target.value }))}
+            placeholder="Ex: 199"
+            className="mt-1 w-full rounded-2xl border border-champagne-300 px-4 py-2.5 text-noir-900 placeholder:text-noir-400"
           />
         </div>
         <div>
@@ -439,7 +456,7 @@ function AdminPageContent() {
               type="button"
               onClick={() => {
                 setEditingId(null);
-                setForm({ name: "", description: "", category: "Rings", priceUsd: "", stockQuantity: "0", freeShipping: false, variations: "", imageUrls: "" });
+                setForm({ name: "", description: "", category: "Rings", priceUsd: "", compareAtPriceUsd: "", stockQuantity: "0", freeShipping: false, variations: "", imageUrls: "" });
                 setImageFiles([]);
                 if (fileInputRef.current) fileInputRef.current.value = "";
               }}

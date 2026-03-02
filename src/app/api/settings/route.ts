@@ -25,6 +25,8 @@ export async function GET() {
       home_hero_banner_desktop_url: null,
       home_hero_banner_mobile_url: null,
       meta_pixel_id: null,
+      unique_piece_label: null,
+      shipping_insured_text: null,
     });
   }
 }

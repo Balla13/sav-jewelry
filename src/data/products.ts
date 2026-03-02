@@ -22,6 +22,8 @@ export interface Product {
   images?: string[];
   variations?: string[];
   priceUsd: number;
+  /** Preço “de” / normal para exibir riscado quando em promoção. Deve ser >= priceUsd. */
+  compareAtPriceUsd?: number;
   stockQuantity?: number;
   /** Se true, este produto não cobra frete (frete grátis). Se false, usa o frete fixo da loja. */
   freeShipping?: boolean;

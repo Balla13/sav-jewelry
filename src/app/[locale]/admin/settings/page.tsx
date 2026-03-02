@@ -19,6 +19,8 @@ export default function AdminSettingsPage() {
   const [heroDesktopUrl, setHeroDesktopUrl] = useState<string | null>(null);
   const [heroMobileUrl, setHeroMobileUrl] = useState<string | null>(null);
   const [metaPixelId, setMetaPixelId] = useState("");
+  const [uniquePieceLabel, setUniquePieceLabel] = useState("");
+  const [shippingInsuredText, setShippingInsuredText] = useState("");
   const [coupons, setCoupons] = useState<{ id: string; code: string; type: string; value: number }[]>([]);
   const [couponCode, setCouponCode] = useState("");
   const [couponType, setCouponType] = useState<"percent" | "fixed">("percent");
@@ -63,6 +65,8 @@ export default function AdminSettingsPage() {
         setHeroDesktopUrl(data?.home_hero_banner_desktop_url || null);
         setHeroMobileUrl(data?.home_hero_banner_mobile_url || null);
         setMetaPixelId(data?.meta_pixel_id || "");
+        setUniquePieceLabel(data?.unique_piece_label || "");
+        setShippingInsuredText(data?.shipping_insured_text || "");
       })
       .catch(() => {});
   }, [router, locale]);
@@ -150,6 +154,8 @@ export default function AdminSettingsPage() {
         home_hero_banner_desktop_url: heroDesktopUrl,
         home_hero_banner_mobile_url: heroMobileUrl,
         meta_pixel_id: metaPixelId.trim() || null,
+        unique_piece_label: uniquePieceLabel.trim() || null,
+        shipping_insured_text: shippingInsuredText.trim() || null,
       }),
     });
     const data = await res.json();
@@ -238,6 +244,36 @@ export default function AdminSettingsPage() {
             value={facebook}
             onChange={(e) => setFacebook(e.target.value)}
             placeholder="https://facebook.com/yourpage"
+            className="mt-1 w-full rounded-2xl border border-champagne-300 px-4 py-2.5 text-noir-900 placeholder:text-noir-400"
+          />
+        </div>
+        <h2 className="font-display text-lg font-medium text-noir-900 pt-2">Etiqueta e envio</h2>
+        <p className="text-sm text-noir-600">
+          Texto da etiqueta &quot;Peça única&quot; (ex.: Peça única). Deixe vazio para não exibir. Texto sobre seguro no envio (ex.: Envio com seguro incluído).
+        </p>
+        <div>
+          <label htmlFor="unique_piece_label" className="block text-sm font-medium text-noir-700">
+            Etiqueta peça única
+          </label>
+          <input
+            id="unique_piece_label"
+            type="text"
+            value={uniquePieceLabel}
+            onChange={(e) => setUniquePieceLabel(e.target.value)}
+            placeholder="Peça única"
+            className="mt-1 w-full rounded-2xl border border-champagne-300 px-4 py-2.5 text-noir-900 placeholder:text-noir-400"
+          />
+        </div>
+        <div>
+          <label htmlFor="shipping_insured_text" className="block text-sm font-medium text-noir-700">
+            Texto seguro no envio
+          </label>
+          <input
+            id="shipping_insured_text"
+            type="text"
+            value={shippingInsuredText}
+            onChange={(e) => setShippingInsuredText(e.target.value)}
+            placeholder="Envio com seguro incluído"
             className="mt-1 w-full rounded-2xl border border-champagne-300 px-4 py-2.5 text-noir-900 placeholder:text-noir-400"
           />
         </div>

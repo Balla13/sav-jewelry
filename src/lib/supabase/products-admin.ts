@@ -17,6 +17,7 @@ export async function insertProductAdmin(product: Omit<Product, "id">): Promise<
         description: product.description,
         category: product.category,
         price_usd: product.priceUsd,
+        compare_at_price: product.compareAtPriceUsd != null ? product.compareAtPriceUsd : null,
         stock_quantity: product.stockQuantity ?? 0,
         free_shipping: product.freeShipping === true,
         images,
@@ -40,6 +41,7 @@ export async function updateProductAdmin(id: string, product: Partial<Omit<Produ
     if (product.description != null) payload.description = product.description;
     if (product.category != null) payload.category = product.category;
     if (product.priceUsd != null) payload.price_usd = product.priceUsd;
+    if (product.compareAtPriceUsd !== undefined) payload.compare_at_price = product.compareAtPriceUsd != null ? product.compareAtPriceUsd : null;
     if (product.stockQuantity != null) payload.stock_quantity = product.stockQuantity;
     if (product.freeShipping != null) payload.free_shipping = product.freeShipping;
     if (product.images != null && product.images.length > 0) payload.images = product.images;

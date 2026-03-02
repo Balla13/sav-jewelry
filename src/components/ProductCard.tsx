@@ -14,6 +14,7 @@ export default function ProductCard({ product }: Props) {
   const [hover, setHover] = useState(false);
   const firstImage = product.images?.[0] ?? product.image ?? "";
   const secondImage = product.images?.[1] ?? firstImage;
+  const showComparePrice = product.compareAtPriceUsd != null && product.compareAtPriceUsd > product.priceUsd;
 
   return (
     <Link
@@ -55,9 +56,16 @@ export default function ProductCard({ product }: Props) {
         <h2 className="font-display text-xl font-light tracking-tight text-noir-900">
           {product.name}
         </h2>
-        <p className="mt-2 text-label font-medium uppercase tracking-widest text-noir-700">
-          {formatPrice(product.priceUsd)}
-        </p>
+        <div className="mt-2 flex flex-wrap items-baseline gap-2">
+          {showComparePrice && (
+            <span className="text-label font-medium uppercase tracking-widest text-noir-400 line-through">
+              {formatPrice(product.compareAtPriceUsd!)}
+            </span>
+          )}
+          <p className="text-label font-medium uppercase tracking-widest text-noir-700">
+            {formatPrice(product.priceUsd)}
+          </p>
+        </div>
       </div>
     </Link>
   );

@@ -38,6 +38,8 @@ export async function PATCH(request: NextRequest) {
       home_hero_banner_desktop_url,
       home_hero_banner_mobile_url,
       meta_pixel_id,
+      unique_piece_label,
+      shipping_insured_text,
     } = body as {
       instagram_url?: string;
       facebook_url?: string;
@@ -49,6 +51,8 @@ export async function PATCH(request: NextRequest) {
       home_hero_banner_desktop_url?: string | null;
       home_hero_banner_mobile_url?: string | null;
       meta_pixel_id?: string | null;
+      unique_piece_label?: string | null;
+      shipping_insured_text?: string | null;
     };
     const result = await updateSettings({
       ...(instagram_url !== undefined && { instagram_url: instagram_url || null }),
@@ -61,6 +65,8 @@ export async function PATCH(request: NextRequest) {
       ...(home_hero_banner_desktop_url !== undefined && { home_hero_banner_desktop_url: home_hero_banner_desktop_url || null }),
       ...(home_hero_banner_mobile_url !== undefined && { home_hero_banner_mobile_url: home_hero_banner_mobile_url || null }),
       ...(meta_pixel_id !== undefined && { meta_pixel_id: meta_pixel_id || null }),
+      ...(unique_piece_label !== undefined && { unique_piece_label: unique_piece_label || null }),
+      ...(shipping_insured_text !== undefined && { shipping_insured_text: shipping_insured_text || null }),
     });
     if (result.error) return NextResponse.json({ error: result.error }, { status: 500 });
     const settings = await getSettings();

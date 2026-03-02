@@ -9,9 +9,13 @@ import type { Product } from "@/data/products";
 import { formatPrice } from "@/data/products";
 import { useCartStore } from "@/store/cart-store";
 
-type Props = { product: Product };
+type Props = {
+  product: Product;
+  uniquePieceLabel?: string;
+  shippingInsuredText?: string;
+};
 
-export default function ProductDetail({ product }: Props) {
+export default function ProductDetail({ product, uniquePieceLabel, shippingInsuredText }: Props) {
   const t = useTranslations("product");
   const tCart = useTranslations("cart");
   const tReviews = useTranslations("reviews");
@@ -22,6 +26,7 @@ export default function ProductDetail({ product }: Props) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const mainImage = allImages[selectedIndex] || product.image;
   const thumbnails = allImages.slice(0, 4);
+  const showComparePrice = product.compareAtPriceUsd != null && product.compareAtPriceUsd > product.priceUsd;
 
   const handleAddToCart = () => {
     addItem(product.id, 1, {
@@ -93,6 +98,11 @@ export default function ProductDetail({ product }: Props) {
             <h1 className="font-display text-4xl font-light tracking-tight text-noir-900 sm:text-5xl">
               {product.name}
             </h1>
+            {uniquePieceLabel && (
+              <span className="mt-4 inline-block rounded-full bg-noir-900 px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-white">
+                {uniquePieceLabel}
+              </span>
+            )}
             {product.variations && product.variations.length > 0 && (
               <p className="mt-4 text-label uppercase tracking-widest text-noir-500">
                 {product.variations.join(" · ")}
@@ -103,10 +113,23 @@ export default function ProductDetail({ product }: Props) {
               <p className="text-label font-medium uppercase tracking-widest text-noir-500">
                 {t("priceLabel")}
               </p>
-              <p className="mt-3 text-xl font-display font-medium text-noir-900">
-                {formatPrice(product.priceUsd)}
-              </p>
+              <div className="mt-3 flex flex-wrap items-baseline gap-3">
+                {showComparePrice && (
+                  <span className="text-lg font-display font-medium text-noir-400 line-through">
+                    {formatPrice(product.compareAtPriceUsd!)}
+                  </span>
+                )}
+                <p className="text-2xl font-display font-semibold text-noir-900">
+                  {formatPrice(product.priceUsd)}
+                </p>
+              </div>
             </div>
+
+            {shippingInsuredText && (
+              <p className="mt-4 text-sm text-noir-600">
+                {shippingInsuredText}
+              </p>
+            )}
 
             <button
               type="button"
