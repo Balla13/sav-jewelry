@@ -85,7 +85,9 @@
     "from": "From",
     "backToCollection": "Back to collection",
     "priceLabel": "Price",
-    "description": "Description"
+    "description": "Description",
+    "shipsBy": "Ships by",
+    "shippingAndReturns": "3-5 business days · Hassle-free returns"
   },
   "cart": {
     "title": "Your cart",

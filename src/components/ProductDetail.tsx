@@ -1,13 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useState, useMemo } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
-import { ArrowLeft, Star, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Star, ShoppingBag, Truck } from "lucide-react";
 import type { Product } from "@/data/products";
 import { formatPrice } from "@/data/products";
 import { useCartStore } from "@/store/cart-store";
+
+/** Adds N business days (skips weekends). */
+function addBusinessDays(from: Date, days: number): Date {
+  const d = new Date(from);
+  let added = 0;
+  while (added < days) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  return d;
+}
 
 type Props = {
   product: Product;
@@ -27,6 +39,15 @@ export default function ProductDetail({ product, uniquePieceLabel, shippingInsur
   const mainImage = allImages[selectedIndex] || product.image;
   const thumbnails = allImages.slice(0, 4);
   const showComparePrice = product.compareAtPriceUsd != null && product.compareAtPriceUsd > product.priceUsd;
+  const locale = useLocale();
+  const shipsByDate = useMemo(() => {
+    const date = addBusinessDays(new Date(), 5);
+    return date.toLocaleDateString(locale === "es" ? "es-ES" : "en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+  }, [locale]);
 
   const handleAddToCart = () => {
     addItem(product.id, 1, {
@@ -130,6 +151,19 @@ export default function ProductDetail({ product, uniquePieceLabel, shippingInsur
                 {shippingInsuredText}
               </p>
             )}
+
+            <div className="mt-6 rounded-2xl border border-noir-900/10 bg-noir-50/50 px-4 py-4">
+              <p className="text-label font-medium uppercase tracking-widest text-noir-500">
+                {t("shipsBy")}
+              </p>
+              <p className="mt-1 font-display text-noir-900 capitalize">
+                {shipsByDate}
+              </p>
+              <p className="mt-3 flex items-center gap-2 text-sm text-noir-700">
+                <Truck className="h-4 w-4 shrink-0 text-noir-500" aria-hidden />
+                {t("shippingAndReturns")}
+              </p>
+            </div>
 
             <button
               type="button"

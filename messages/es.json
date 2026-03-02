@@ -85,7 +85,9 @@
     "from": "Desde",
     "backToCollection": "Volver a la colección",
     "priceLabel": "Precio",
-    "description": "Descripción"
+    "description": "Descripción",
+    "shipsBy": "Envío estimado",
+    "shippingAndReturns": "3-5 días hábiles · Devolución sin complicaciones"
   },
   "cart": {
     "title": "Tu carrito",
