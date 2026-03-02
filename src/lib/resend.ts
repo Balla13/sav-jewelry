@@ -138,7 +138,8 @@ export async function sendContactFormEmail(params: {
   const { error } = await resend.emails.send({
     from: fromEmail,
     to: [CONTACT_TO_EMAIL],
-    replyTo: email,
+    // Resend usa reply_to (snake_case)
+    reply_to: email,
     subject: `Contact: ${reason} – ${name}`,
     html,
   });
