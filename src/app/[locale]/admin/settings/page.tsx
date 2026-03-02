@@ -172,12 +172,6 @@ export default function AdminSettingsPage() {
           >
             Dashboard
           </Link>
-          <Link
-            href="/admin/inventory"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Inventory
-          </Link>
           <Link href="/admin" className="text-sm font-medium text-noir-600 hover:text-noir-900">
             Add product
           </Link>
