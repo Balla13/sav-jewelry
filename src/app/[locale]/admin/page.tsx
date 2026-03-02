@@ -318,6 +318,36 @@ function AdminPageContent() {
         </div>
       </div>
 
+      {products.length > 0 && !editingId && (
+        <div className="mb-8 rounded-2xl border border-noir-900/10 bg-section p-4">
+          <h2 className="mb-4 font-display text-lg font-medium text-noir-900">{t("inventory")}</h2>
+          <ul className="space-y-2">
+            {products.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-noir-900/5 bg-white px-4 py-3">
+                <span className="font-medium text-noir-900">{p.name}</span>
+                <span className="text-sm text-noir-600">{p.category} · ${p.priceUsd}</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(p)}
+                    className="rounded-full bg-noir-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-noir-800"
+                  >
+                    {t("edit")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(p.id)}
+                    className="rounded-full border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                  >
+                    {t("delete")}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-noir-700">{t("name")}</label>
@@ -427,13 +457,29 @@ function AdminPageContent() {
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         {success && <p className="text-sm text-green-700">{success}</p>}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-full bg-noir-900 py-3 text-sm font-medium text-white transition hover:bg-noir-800 hover:shadow-lg disabled:opacity-60"
-        >
-          {submitting ? t("saving") : t("saveProduct")}
-        </button>
+        <div className="flex gap-3">
+          {editingId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingId(null);
+                setForm({ name: "", description: "", category: "Rings", priceUsd: "", stockQuantity: "0", freeShipping: false, variations: "", imageUrls: "" });
+                setImageFiles([]);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+              className="rounded-full border border-noir-900/20 px-4 py-3 text-sm font-medium text-noir-700 hover:bg-noir-900/5"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="flex-1 rounded-full bg-noir-900 py-3 text-sm font-medium text-white transition hover:bg-noir-800 hover:shadow-lg disabled:opacity-60"
+          >
+            {submitting ? t("saving") : t("saveProduct")}
+          </button>
+        </div>
       </form>
     </div>
   );
