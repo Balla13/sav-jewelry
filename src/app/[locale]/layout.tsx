@@ -8,6 +8,7 @@ import CartDrawer from "@/components/CartDrawer";
 import UrgencyBanner from "@/components/UrgencyBanner";
 import Footer from "@/components/Footer";
 import MetaPixel from "@/components/MetaPixel";
+import ExitIntentPopup from "@/components/ExitIntentPopup";
 
 type Props = {
   children: React.ReactNode;
@@ -37,6 +38,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <main className="flex min-h-screen flex-col">{children}</main>
       <Footer />
       <CartDrawer />
+      <ExitIntentPopup />
     </NextIntlClientProvider>
   );
 }

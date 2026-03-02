@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const { data: products, error } = await supabase
       .from("products")
       .select("id, name, price_usd, free_shipping")
-      .in("id", ids);
+      .in("id", ids.filter((id) => id !== "cleaning-kit"));
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const byId = new Map<string, { name: string; price_usd: number; free_shipping: boolean }>();
@@ -52,20 +52,33 @@ export async function POST(request: NextRequest) {
     });
 
     let subtotalCents = 0;
+    let totalQuantity = 0;
     const lineItemsForOrder: { name: string; quantity: number; priceUsd: number }[] = [];
-    let needsShippingFee = false;
     for (const item of normalized) {
+      if (item.productId === "cleaning-kit") {
+        const kitPrice = 29;
+        const itemTotal = Math.round(kitPrice * item.quantity * 100);
+        subtotalCents += itemTotal;
+        totalQuantity += item.quantity;
+        lineItemsForOrder.push({
+          name: "SÁV+ Jewelry Cleaning Kit",
+          quantity: item.quantity,
+          priceUsd: kitPrice,
+        });
+        continue;
+      }
       const p = byId.get(item.productId);
       if (!p) continue;
-      if (!p.free_shipping) needsShippingFee = true;
-      const itemTotal = Math.round((p.price_usd * item.quantity) * 100);
+      const itemTotal = Math.round(p.price_usd * item.quantity * 100);
       subtotalCents += itemTotal;
+      totalQuantity += item.quantity;
       lineItemsForOrder.push({ name: p.name, quantity: item.quantity, priceUsd: p.price_usd });
     }
     if (subtotalCents <= 0) return NextResponse.json({ error: "No valid products" }, { status: 400 });
 
     const shippingFeeUsd = Number(settings.shipping_fee_usd) || 0;
-    const shippingCents = needsShippingFee ? Math.round(shippingFeeUsd * 100) : 0;
+    const qualifiesFreeShipping = totalQuantity >= 2 || subtotalCents >= 29900;
+    const shippingCents = qualifiesFreeShipping ? 0 : Math.round(shippingFeeUsd * 100);
     let totalCents = subtotalCents + shippingCents;
 
     let discountCents = 0;

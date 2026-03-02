@@ -51,10 +51,8 @@ export default function CartDrawer() {
     })
     .filter(Boolean) as { product: Product; quantity: number }[];
 
-  const total = lineItems.reduce(
-    (acc, { product, quantity }) => acc + product.priceUsd * quantity,
-    0
-  );
+  const total = lineItems.reduce((acc, { product, quantity }) => acc + product.priceUsd * quantity, 0);
+  const totalQuantity = lineItems.reduce((acc, { quantity }) => acc + quantity, 0);
 
   if (!isOpen) return null;
 
@@ -192,6 +190,7 @@ export default function CartDrawer() {
                 </motion.p>
               )}
             </AnimatePresence>
+            <FreeShippingProgress total={total} totalQuantity={totalQuantity} />
             <div className="flex items-center justify-between text-base font-medium text-noir-900">
               <span>{t("subtotal")}</span>
               <span>{formatPrice(total)}</span>
@@ -207,5 +206,42 @@ export default function CartDrawer() {
         )}
       </div>
     </>
+  );
+}
+
+type FreeShippingProgressProps = {
+  total: number;
+  totalQuantity: number;
+};
+
+function FreeShippingProgress({ total, totalQuantity }: FreeShippingProgressProps) {
+  const t = useTranslations("cart");
+  const goalAmount = 299;
+  const needsItem = totalQuantity < 2;
+  const needsAmount = total < goalAmount;
+  const missingAmount = Math.max(0, goalAmount - total);
+  const quantityProgress = Math.min(1, totalQuantity / 2);
+  const amountProgress = Math.min(1, total / goalAmount);
+  const progress = Math.min(1, Math.max(quantityProgress, amountProgress));
+  const percentage = Math.round(progress * 100);
+
+  const message =
+    progress >= 1
+      ? t("freeShippingUnlocked", { amount: formatPrice(goalAmount) })
+      : t("freeShippingGoal", { amount: formatPrice(missingAmount || goalAmount - total) });
+
+  return (
+    <div className="space-y-2 rounded-2xl border border-champagne-200 bg-section px-3 py-3">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-white/80">
+        <div
+          className="h-full rounded-full bg-noir-900 transition-all"
+          style={{ width: `${Math.max(8, percentage)}%` }}
+        />
+      </div>
+      <p className="text-xs text-noir-700">{message}</p>
+      <p className="text-[11px] uppercase tracking-[0.18em] text-noir-400">
+        {needsItem || needsAmount ? "Free shipping on 2+ items or orders over $299" : "Free shipping unlocked"}
+      </p>
+    </div>
   );
 }

@@ -56,6 +56,7 @@ export default function CheckoutShipping() {
 
   const clearCart = useCartStore((s) => s.clearCart);
   const items = useCartStore((s) => s.items);
+  const [includeCleaningKit, setIncludeCleaningKit] = useState(false);
   const lineItems = items
     .map((item) => {
       const product: Product | null = item.snapshot
@@ -72,12 +73,14 @@ export default function CheckoutShipping() {
       return product ? { product, quantity: item.quantity } : null;
     })
     .filter(Boolean) as { product: Product; quantity: number }[];
-  const subtotal = lineItems.reduce(
-    (acc, { product, quantity }) => acc + product.priceUsd * quantity,
-    0
-  );
-  const needsShippingFee = lineItems.some(({ product }) => !product.freeShipping);
-  const shipping = needsShippingFee ? shippingFeeUsd : 0;
+  const baseSubtotal = lineItems.reduce((acc, { product, quantity }) => acc + product.priceUsd * quantity, 0);
+  const baseQuantity = lineItems.reduce((acc, { quantity }) => acc + quantity, 0);
+  const kitPrice = 29;
+  const kitComparePrice = 49;
+  const subtotal = includeCleaningKit ? baseSubtotal + kitPrice : baseSubtotal;
+  const totalQuantity = includeCleaningKit ? baseQuantity + 1 : baseQuantity;
+  const qualifiesFreeShipping = totalQuantity >= 2 || subtotal >= 299;
+  const shipping = qualifiesFreeShipping ? 0 : shippingFeeUsd;
   const total = subtotal + shipping;
 
   useEffect(() => {
@@ -97,12 +100,24 @@ export default function CheckoutShipping() {
   const saveCheckoutSession = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = (e.target.value || "").trim();
     if (!value || !value.includes("@") || lineItems.length === 0) return;
+    const sessionItems = lineItems.map(({ product, quantity }) => ({
+      name: product.name,
+      quantity,
+      priceUsd: product.priceUsd,
+    }));
+    if (includeCleaningKit) {
+      sessionItems.push({
+        name: "SÁV+ Jewelry Cleaning Kit",
+        quantity: 1,
+        priceUsd: kitPrice,
+      });
+    }
     fetch("/api/checkout/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: value,
-        items: lineItems.map(({ product, quantity }) => ({ name: product.name, quantity, priceUsd: product.priceUsd })),
+        items: sessionItems,
         locale: locale === "es" ? "es" : "en",
       }),
     }).catch(() => {});
@@ -139,7 +154,10 @@ export default function CheckoutShipping() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: lineItems.map(({ product, quantity }) => ({ productId: product.id, quantity })),
+          items: [
+            ...lineItems.map(({ product, quantity }) => ({ productId: product.id, quantity })),
+            ...(includeCleaningKit ? [{ productId: "cleaning-kit", quantity: 1 }] : []),
+          ],
           locale: locale as "en" | "es",
           coupon_code: (appliedCoupon || couponCode).trim() || undefined,
           shipping_address: {
@@ -364,6 +382,53 @@ export default function CheckoutShipping() {
               </ul>
 
               {!clientSecret && (
+                <div className="mt-4 rounded-2xl border border-noir-900/10 bg-white p-4 sm:p-5">
+                  <div className="flex gap-3">
+                    <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-section sm:h-24 sm:w-24">
+                      <Image
+                        src="/Limpa Joias SAV.png"
+                        alt="SÁV+ Jewelry Cleaning Kit"
+                        fill
+                        className="object-cover object-center"
+                        sizes="64px"
+                        unoptimized
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-noir-500">
+                        Exclusive offer
+                      </p>
+                      <p className="mt-1 font-display text-sm font-medium text-noir-900">
+                        SÁV+ Jewelry Cleaning Kit
+                      </p>
+                      <p className="mt-0.5 text-xs text-noir-600">
+                        Keep your pieces radiant with our signature revival formula.
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-right">
+                        <p className="text-xs font-medium text-noir-400 line-through">
+                          {formatPrice(kitComparePrice)}
+                        </p>
+                        <p className="font-display text-base font-semibold text-noir-900">
+                          {formatPrice(kitPrice)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-noir-700">
+                    <input
+                      type="checkbox"
+                      checked={includeCleaningKit}
+                      onChange={(e) => setIncludeCleaningKit(e.target.checked)}
+                      className="h-4 w-4 rounded border-champagne-300 text-noir-900 focus:ring-noir-900"
+                    />
+                    <span>Add this cleaning kit to my order</span>
+                  </label>
+                </div>
+              )}
+
+              {!clientSecret && (
                 <>
                   <div className="mt-4">
                     <label htmlFor="checkout-coupon" className="block text-xs font-medium text-noir-600">
@@ -447,9 +512,9 @@ export default function CheckoutShipping() {
                       <span>
                         {previewAmounts
                           ? formatPrice(previewAmounts.shipping)
-                          : needsShippingFee
-                            ? formatPrice(shipping)
-                            : t("free")}
+                          : qualifiesFreeShipping
+                            ? t("free")
+                            : formatPrice(shipping)}
                       </span>
                     </div>
                     {(previewAmounts?.discount ?? 0) > 0 && (

@@ -103,6 +103,8 @@
     "zipCode": "Código postal",
     "zipPlaceholder": "Ingresa tu código postal",
     "shippingNote": "Envío a tu ubicación: 2-5 días hábiles",
+    "freeShippingGoal": "Añade un artículo más o gasta {amount} más para envío gratis.",
+    "freeShippingUnlocked": "Has desbloqueado el envío gratis.",
     "free": "Gratis"
   },
   "collection": {

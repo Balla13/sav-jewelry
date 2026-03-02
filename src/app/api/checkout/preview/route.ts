@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { data: products, error } = await supabase
       .from("products")
       .select("id, name, price_usd, free_shipping")
-      .in("id", ids);
+      .in("id", ids.filter((id) => id !== "cleaning-kit"));
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const byId = new Map<string, { name: string; price_usd: number; free_shipping: boolean }>();
@@ -39,17 +39,23 @@ export async function POST(request: NextRequest) {
     });
 
     let subtotalCents = 0;
-    let needsShippingFee = false;
+    let totalQuantity = 0;
     for (const item of normalized) {
+      if (item.productId === "cleaning-kit") {
+        subtotalCents += Math.round(29 * item.quantity * 100);
+        totalQuantity += item.quantity;
+        continue;
+      }
       const p = byId.get(item.productId);
       if (!p) continue;
-      if (!p.free_shipping) needsShippingFee = true;
       subtotalCents += Math.round(p.price_usd * item.quantity * 100);
+      totalQuantity += item.quantity;
     }
     if (subtotalCents <= 0) return NextResponse.json({ error: "No valid products" }, { status: 400 });
 
     const shippingFeeUsd = Number(settings.shipping_fee_usd) || 0;
-    const shippingCents = needsShippingFee ? Math.round(shippingFeeUsd * 100) : 0;
+    const qualifiesFreeShipping = totalQuantity >= 2 || subtotalCents >= 29900;
+    const shippingCents = qualifiesFreeShipping ? 0 : Math.round(shippingFeeUsd * 100);
     let totalCents = subtotalCents + shippingCents;
 
     let discountCents = 0;

@@ -103,6 +103,8 @@
     "zipCode": "Zip Code",
     "zipPlaceholder": "Enter zip code",
     "shippingNote": "Shipping to your location: 2-5 business days",
+    "freeShippingGoal": "Add one more item or spend {amount} more for free shipping.",
+    "freeShippingUnlocked": "You unlocked free shipping.",
     "free": "Free"
   },
   "collection": {
