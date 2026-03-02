@@ -27,7 +27,7 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   const messages = await getMessages();
   const settings = await getSettings();
-  const pixelId = (settings.meta_pixel_id || "").trim() || null;
+  const pixelId = (settings.meta_pixel_id || "").trim() || "1228565172777958";
 
   return (
     <NextIntlClientProvider messages={messages}>

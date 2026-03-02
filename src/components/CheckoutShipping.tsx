@@ -85,7 +85,7 @@ export default function CheckoutShipping() {
   }, [isSuccess, clearCart]);
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch("/api/settings", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         const fee = data?.shipping_fee_usd;

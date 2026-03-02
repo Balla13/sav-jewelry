@@ -12,7 +12,7 @@ export default function Hero() {
   const [bannerMobile, setBannerMobile] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch("/api/settings", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         setBannerDesktop(data?.home_hero_banner_desktop_url || null);

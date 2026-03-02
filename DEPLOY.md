@@ -38,7 +38,7 @@ Para o site continuar funcionando igual (Stripe, Supabase, Resend, cron, etc.), 
    | `STRIPE_SECRET_KEY` | No seu `.env.local` (sk_live_...) |
    | `RESEND_API_KEY` | No seu `.env.local` (chave do Resend) |
    | `RESEND_FROM_EMAIL` | (Opcional) Ex.: `contact@savjewelry.shop` depois de verificar o domínio no Resend |
-   | `NEXT_PUBLIC_SITE_URL` | Quando tiver o domínio: `https://savjewelry.shop` (ou o que for). Por enquanto pode ser a URL da Vercel, ex.: `https://seu-projeto.vercel.app` |
+   | `NEXT_PUBLIC_SITE_URL` | **Produção:** `https://savjewelry.shop` — usado em e-mails e links. Defina na Vercel e faça Redeploy. |
    | `CRON_SECRET` | (Opcional) Uma senha qualquer em texto para proteger o endpoint de carrinho abandonado |
 
 3. Salve e volte para a aba **Deployments**.

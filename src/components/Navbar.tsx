@@ -45,7 +45,7 @@ export default function Navbar() {
   const toggleCart = useCartStore((s) => s.toggleCart);
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch("/api/settings", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         setLogoUrl(data?.site_logo_url || null);
