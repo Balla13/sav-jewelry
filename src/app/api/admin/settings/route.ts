@@ -1,0 +1,71 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSettings, updateSettings } from "@/lib/supabase/settings";
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Ipaper123!";
+
+function checkAuth(request: NextRequest): boolean {
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.replace(/^Bearer\s+/i, "") || request.cookies.get("admin_token")?.value;
+  return token === ADMIN_PASSWORD;
+}
+
+export async function GET(request: NextRequest) {
+  if (!checkAuth(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    const settings = await getSettings();
+    return NextResponse.json(settings);
+  } catch (e) {
+    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  if (!checkAuth(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    const body = await request.json();
+    const {
+      instagram_url,
+      facebook_url,
+      contact_email,
+      contact_phone,
+      shipping_fee_usd,
+      site_logo_url,
+      site_icon_url,
+      home_hero_banner_desktop_url,
+      home_hero_banner_mobile_url,
+      meta_pixel_id,
+    } = body as {
+      instagram_url?: string;
+      facebook_url?: string;
+      contact_email?: string | null;
+      contact_phone?: string | null;
+      shipping_fee_usd?: number;
+      site_logo_url?: string | null;
+      site_icon_url?: string | null;
+      home_hero_banner_desktop_url?: string | null;
+      home_hero_banner_mobile_url?: string | null;
+      meta_pixel_id?: string | null;
+    };
+    const result = await updateSettings({
+      ...(instagram_url !== undefined && { instagram_url: instagram_url || null }),
+      ...(facebook_url !== undefined && { facebook_url: facebook_url || null }),
+      ...(contact_email !== undefined && { contact_email: contact_email || null }),
+      ...(contact_phone !== undefined && { contact_phone: contact_phone || null }),
+      ...(shipping_fee_usd !== undefined && { shipping_fee_usd: Number(shipping_fee_usd) }),
+      ...(site_logo_url !== undefined && { site_logo_url: site_logo_url || null }),
+      ...(site_icon_url !== undefined && { site_icon_url: site_icon_url || null }),
+      ...(home_hero_banner_desktop_url !== undefined && { home_hero_banner_desktop_url: home_hero_banner_desktop_url || null }),
+      ...(home_hero_banner_mobile_url !== undefined && { home_hero_banner_mobile_url: home_hero_banner_mobile_url || null }),
+      ...(meta_pixel_id !== undefined && { meta_pixel_id: meta_pixel_id || null }),
+    });
+    if (result.error) return NextResponse.json({ error: result.error }, { status: 500 });
+    const settings = await getSettings();
+    return NextResponse.json(settings);
+  } catch (e) {
+    return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
+  }
+}

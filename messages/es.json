@@ -1,0 +1,193 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "collection": "Colección",
+    "about": "Nosotros",
+    "contact": "Contacto",
+    "language": "Idioma",
+    "cart": "Carrito",
+    "brandName": "Joyas",
+    "account": "Mi cuenta",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú"
+  },
+  "admin": {
+    "login": "Acceso admin",
+    "password": "Contraseña",
+    "submitLogin": "Entrar",
+    "loading": "Cargando...",
+    "addProduct": "Añadir producto",
+    "inventory": "Inventario",
+    "noProducts": "Aún no hay productos.",
+    "editProduct": "Editar producto",
+    "productList": "Productos (Supabase)",
+    "uploadImages": "Subir imágenes (máx. 5)",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "confirmDelete": "¿Eliminar este producto?",
+    "productAdded": "Producto añadido correctamente.",
+    "productUpdated": "Producto actualizado correctamente.",
+    "productDeleted": "Producto eliminado.",
+    "deleteFailed": "Error al eliminar el producto.",
+    "backToStore": "Volver a la tienda",
+    "name": "Nombre",
+    "description": "Descripción",
+    "category": "Categoría",
+    "stock": "Stock",
+    "freeShipping": "Envío gratis para este producto",
+    "shippingFixed": "Envío pago fijo",
+    "variations": "Variaciones (ej. Oro, Plata, Rosa)",
+    "imageUrls": "URLs de imágenes (una por línea)",
+    "saveProduct": "Guardar producto",
+    "saving": "Guardando..."
+  },
+  "account": {
+    "title": "Mi cuenta",
+    "signUp": "Registrarse",
+    "login": "Iniciar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "dateOfBirth": "Fecha de nacimiento",
+    "signOut": "Cerrar sesión",
+    "authError": "Correo o contraseña incorrectos.",
+    "signUpSuccess": "Cuenta creada. Revisa tu correo para confirmar.",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "sendResetLink": "Enviar enlace",
+    "resetEmailSent": "Revisa tu correo para el enlace de restablecimiento.",
+    "changePassword": "Cambiar contraseña",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Nueva contraseña",
+    "confirmNewPassword": "Confirmar nueva contraseña",
+    "passwordUpdated": "Contraseña actualizada.",
+    "myOrders": "Mis pedidos",
+    "orderStatus": "Estado del pedido",
+    "orderReceived": "Pedido recibido",
+    "paymentApproved": "Pagado",
+    "shipped": "Enviado",
+    "noOrders": "Aún no hay pedidos."
+  },
+  "hero": {
+    "tagline": "Elegancia Atemporal",
+    "title": "Creado para los Exigentes",
+    "subtitle": "Descubre piezas excepcionales que trascienden tendencias. Cada creación es un testimonio de arte y refinamiento.",
+    "cta": "Explorar Colección",
+    "shipping": "Envío a tu ubicación: 2-5 días hábiles"
+  },
+  "featured": {
+    "title": "Colección Destacada",
+    "subtitle": "Piezas seleccionadas que definen el lujo",
+    "viewAll": "Ver Todo",
+    "empty": "No hay productos por el momento. Vuelve pronto."
+  },
+  "product": {
+    "from": "Desde",
+    "backToCollection": "Volver a la colección",
+    "priceLabel": "Precio",
+    "description": "Descripción"
+  },
+  "cart": {
+    "title": "Tu carrito",
+    "close": "Cerrar carrito",
+    "empty": "Tu carrito está vacío",
+    "continueShopping": "Seguir comprando",
+    "addToCart": "Añadir al carrito",
+    "subtotal": "Subtotal",
+    "checkout": "Pagar",
+    "decreaseQuantity": "Disminuir cantidad",
+    "increaseQuantity": "Aumentar cantidad",
+    "remove": "Quitar",
+    "zipCode": "Código postal",
+    "zipPlaceholder": "Ingresa tu código postal",
+    "shippingNote": "Envío a tu ubicación: 2-5 días hábiles",
+    "free": "Gratis"
+  },
+  "collection": {
+    "title": "Colección",
+    "count": "{count} piezas de joyería excepcional"
+  },
+  "footer": {
+    "shop": "Tienda",
+    "allJewelry": "Toda la joyería",
+    "rings": "Anillos",
+    "necklaces": "Collares",
+    "earrings": "Pendientes",
+    "company": "Empresa",
+    "aboutUs": "Nosotros",
+    "contact": "Contacto",
+    "legal": "Legal",
+    "shippingPolicy": "Política de envío",
+    "refundPolicy": "Política de devoluciones",
+    "privacyPolicy": "Política de privacidad",
+    "tagline": "Elegancia atemporal, creada para los más exigentes.",
+    "brandName": "Joyas",
+    "rights": "Todos los derechos reservados."
+  },
+  "about": {
+    "title": "Nuestra historia",
+    "subtitle": "Piezas vintage · Achadinhos únicos",
+    "content": "No producimos las piezas: las buscamos. Cada artículo es un hallazgo vintage, un tesoro único elegido por su carácter y calidad. De cajones olvidados a colecciones de patrimonio, seleccionamos joyería con historia que resiste el paso del tiempo. Respaldamos cada pieza con cuidado e integridad. Si te gustan las piezas únicas, atemporales y con pasado, estás en el lugar correcto."
+  },
+  "shipping": {
+    "title": "Envíos y entrega",
+    "content": "Enviamos a todo el mundo con cuidado. Entrega estándar: 5-7 días hábiles (nacional), 7-14 días hábiles (internacional). Opciones express disponibles en el pago. Todos los pedidos están asegurados y requieren firma a la entrega. Los costes de envío se calculan en el pago según destino y peso."
+  },
+  "policies": {
+    "title": "Términos y políticas",
+    "content": "Devoluciones: Los artículos sin usar pueden devolverse en 30 días para reembolso completo. Política de envío: Consulte nuestra página de Envíos para plazos y costes. Procesamos los pagos de forma segura y protegemos sus datos según la normativa aplicable. Al realizar un pedido acepta estos términos."
+  },
+  "contact": {
+    "title": "Contacto",
+    "content": "Nos encantaría saber de usted. Para consultas sobre pedidos, piezas o colaboraciones, escríbanos. Email: contact@savjewelry.shop — Respondemos en un plazo de 24 horas hábiles."
+  },
+  "checkout": {
+    "checkout": "Pago",
+    "orderSummary": "Resumen del pedido",
+    "email": "Correo electrónico",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "name": "Nombre completo",
+    "address": "Dirección",
+    "city": "Ciudad",
+    "state": "Estado",
+    "zipCodeStart": "Empieza con tu código postal para completar Ciudad y Estado",
+    "standardShipping": "Envío estándar asegurado",
+    "total": "Total",
+    "payNow": "Pagar ahora",
+    "backToCollection": "Volver a la colección"
+  },
+  "legal": {
+    "privacy": {
+      "title": "Política de privacidad",
+      "intro": "SÁV+ Jewelry (“nosotros”) opera desde Florida, Estados Unidos. Esta Política de Privacidad describe cómo recopilamos, usamos y protegemos su información.",
+      "p1": "Recopilamos la información que usted proporciona al crear una cuenta, realizar un pedido o contactarnos: nombre, correo electrónico, dirección de envío y fecha de nacimiento cuando la ley lo requiera. La utilizamos para procesar pedidos, comunicarnos con usted y mejorar nuestros servicios.",
+      "p2": "No vendemos sus datos personales. Solo compartimos información con proveedores necesarios para cumplir los pedidos (p. ej. procesadores de pago, transportistas) y cuando la ley de Florida y de Estados Unidos lo exija.",
+      "p3": "Conservamos sus datos mientras su cuenta esté activa o según exigencias legales. Puede solicitar acceso, corrección o eliminación de sus datos contactándonos.",
+      "p4": "Nuestro sitio puede usar cookies y tecnologías similares para mejorar su experiencia. Al usar nuestro sitio, acepta esta política. Consultas: contact@savjewelry.com."
+    },
+    "shipping": {
+      "title": "Política de envío",
+      "intro": "Entregamos en Estados Unidos e internacionalmente con cuidado y seguro completo.",
+      "p1": "Los pedidos nacionales (EE. UU.) suelen enviarse en 2–5 días hábiles tras la confirmación del pago. Los plazos internacionales varían (generalmente 7–14 días hábiles).",
+      "p2": "Todos los envíos están asegurados y pueden requerir firma a la entrega. Los costes de envío se calculan en el pago según destino y peso.",
+      "p3": "Cuando su pedido sea enviado, recibirá un número de seguimiento por correo. No somos responsables de retrasos por aduanas o transportistas. Para clientes en Florida y EE. UU., ofrecemos el servicio más rápido y fiable."
+    },
+    "refund": {
+      "title": "Política de devoluciones",
+      "intro": "Queremos que esté completamente satisfecho con su compra.",
+      "p1": "Los artículos sin usar, sin alterar y en su embalaje original pueden devolverse en un plazo de 30 días desde la entrega para reembolso completo al método de pago original. Deben estar en condiciones revendibles.",
+      "p2": "Para iniciar una devolución, escríbanos a contact@savjewelry.com con su número de pedido. Le indicaremos los pasos. Los reembolsos se procesan en 5–10 días hábiles tras recibir e inspeccionar el artículo.",
+      "p3": "Las piezas personalizadas o a medida, y los artículos en venta final, no son reembolsables. Esta política se aplica a compras en Florida y a pedidos nacionales e internacionales, según la ley aplicable."
+    }
+  },
+  "reviews": {
+    "title": "Opiniones de clientes",
+    "reviewer1": "Eleanor M.",
+    "review1": "Artesanía exquisita. La pieza llegó bellamente presentada y se ha convertido en un básico diario.",
+    "reviewer2": "James L.",
+    "review2": "Calidad excepcional y diseño atemporal. Exactamente como se describe. Compraré de nuevo.",
+    "reviewer3": "Sophie R.",
+    "review3": "Una verdadera pieza de inversión. El cuidado al detalle es notable. Muy recomendable."
+  }
+}

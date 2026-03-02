@@ -1,0 +1,193 @@
+{
+  "nav": {
+    "home": "Home",
+    "collection": "Collection",
+    "about": "About",
+    "contact": "Contact",
+    "language": "Language",
+    "cart": "Shopping cart",
+    "brandName": "Jewelry",
+    "account": "My account",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "admin": {
+    "login": "Admin login",
+    "password": "Password",
+    "submitLogin": "Log in",
+    "loading": "Loading...",
+    "addProduct": "Add product",
+    "inventory": "Inventory",
+    "noProducts": "No products yet.",
+    "editProduct": "Edit product",
+    "productList": "Products (Supabase)",
+    "uploadImages": "Upload images (up to 5)",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirmDelete": "Delete this product?",
+    "productAdded": "Product added successfully.",
+    "productUpdated": "Product updated successfully.",
+    "productDeleted": "Product deleted.",
+    "deleteFailed": "Failed to delete product.",
+    "backToStore": "Back to store",
+    "name": "Name",
+    "description": "Description",
+    "category": "Category",
+    "stock": "Stock",
+    "freeShipping": "Free shipping for this product",
+    "shippingFixed": "Fixed shipping",
+    "variations": "Variations (e.g. Gold, Silver, Rose)",
+    "imageUrls": "Image URLs (one per line)",
+    "saveProduct": "Save product",
+    "saving": "Saving..."
+  },
+  "account": {
+    "title": "My account",
+    "signUp": "Sign Up",
+    "login": "Log in",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "dateOfBirth": "Date of birth",
+    "signOut": "Sign out",
+    "authError": "Invalid email or password.",
+    "signUpSuccess": "Account created. Please check your email to confirm.",
+    "forgotPassword": "Forgot password?",
+    "sendResetLink": "Send reset link",
+    "resetEmailSent": "Check your email for the password reset link.",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "passwordUpdated": "Password updated successfully.",
+    "myOrders": "My Orders",
+    "orderStatus": "Order status",
+    "orderReceived": "Order received",
+    "paymentApproved": "Paid",
+    "shipped": "Shipped",
+    "noOrders": "No orders yet."
+  },
+  "hero": {
+    "tagline": "Timeless Elegance",
+    "title": "Crafted for the Discerning",
+    "subtitle": "Discover exceptional pieces that transcend trends. Each creation is a testament to artistry and refinement.",
+    "cta": "Explore Collection",
+    "shipping": "Shipping to your location: 2-5 business days"
+  },
+  "featured": {
+    "title": "Featured Collection",
+    "subtitle": "Curated pieces that define luxury",
+    "viewAll": "View All",
+    "empty": "No products at the moment. Check back soon."
+  },
+  "product": {
+    "from": "From",
+    "backToCollection": "Back to collection",
+    "priceLabel": "Price",
+    "description": "Description"
+  },
+  "cart": {
+    "title": "Your cart",
+    "close": "Close cart",
+    "empty": "Your cart is empty",
+    "continueShopping": "Continue shopping",
+    "addToCart": "Add to cart",
+    "subtotal": "Subtotal",
+    "checkout": "Checkout",
+    "decreaseQuantity": "Decrease quantity",
+    "increaseQuantity": "Increase quantity",
+    "remove": "Remove",
+    "zipCode": "Zip Code",
+    "zipPlaceholder": "Enter zip code",
+    "shippingNote": "Shipping to your location: 2-5 business days",
+    "free": "Free"
+  },
+  "collection": {
+    "title": "Collection",
+    "count": "{count} pieces of exceptional jewelry"
+  },
+  "footer": {
+    "shop": "Shop",
+    "allJewelry": "All Jewelry",
+    "rings": "Rings",
+    "necklaces": "Necklaces",
+    "earrings": "Earrings",
+    "company": "Company",
+    "aboutUs": "About Us",
+    "contact": "Contact",
+    "legal": "Legal",
+    "shippingPolicy": "Shipping Policy",
+    "refundPolicy": "Refund Policy",
+    "privacyPolicy": "Privacy Policy",
+    "tagline": "Timeless elegance, crafted for the discerning.",
+    "brandName": "Jewelry",
+    "rights": "All rights reserved."
+  },
+  "about": {
+    "title": "Our Story",
+    "subtitle": "Vintage Finds · Curated Treasures",
+    "content": "We don't produce our pieces—we seek them out. Each item is a vintage find, a one-of-a-kind treasure chosen for its character and quality. From forgotten drawers to estate collections, we curate jewellery that tells a story and stands the test of time. We stand behind every piece with care and integrity. If you love unique, timeless pieces with a past, you're in the right place."
+  },
+  "shipping": {
+    "title": "Shipping & Delivery",
+    "content": "We ship worldwide with care. Standard delivery: 5-7 business days (domestic), 7-14 business days (international). Express options available at checkout. All orders are fully insured and require signature upon delivery. Shipping costs are calculated at checkout based on destination and weight."
+  },
+  "policies": {
+    "title": "Terms & Policies",
+    "content": "Refunds: Unworn items may be returned within 30 days for a full refund. Shipping Policy: See our Shipping page for delivery times and costs. We process payments securely and protect your data in accordance with applicable regulations. By placing an order you agree to these terms."
+  },
+  "contact": {
+    "title": "Contact Us",
+    "content": "We would love to hear from you. For inquiries about orders, pieces, or partnerships, please reach out. Email: contact@savjewelry.shop — We aim to respond within 24 business hours."
+  },
+  "checkout": {
+    "checkout": "Checkout",
+    "orderSummary": "Order Summary",
+    "email": "Email",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "name": "Full Name",
+    "address": "Street Address",
+    "city": "City",
+    "state": "State",
+    "zipCodeStart": "Start with your Zip Code to auto-fill City & State",
+    "standardShipping": "Standard Insured Shipping",
+    "total": "Total",
+    "payNow": "Pay Now",
+    "backToCollection": "Back to collection"
+  },
+  "legal": {
+    "privacy": {
+      "title": "Privacy Policy",
+      "intro": "SÁV+ Jewelry (“we,” “us”) operates from Florida, United States. This Privacy Policy describes how we collect, use, and protect your information.",
+      "p1": "We collect information you provide when creating an account, placing an order, or contacting us: name, email, shipping address, and date of birth for age verification where required. We use this to process orders, communicate with you, and improve our services.",
+      "p2": "We do not sell your personal data. We may share information only with service providers necessary to fulfill orders (e.g., payment processors, shipping carriers) and as required by law in the State of Florida and the United States.",
+      "p3": "We retain your data for as long as your account is active or as needed to comply with legal obligations. You may request access, correction, or deletion of your data by contacting us.",
+      "p4": "Our site may use cookies and similar technologies to enhance your experience. By using our website, you consent to this policy. For questions: contact@savjewelry.com."
+    },
+    "shipping": {
+      "title": "Shipping Policy",
+      "intro": "We deliver to the United States and internationally with care and full insurance.",
+      "p1": "Domestic (U.S.) orders typically ship within 2–5 business days after payment confirmation. International delivery times vary by destination (generally 7–14 business days).",
+      "p2": "All shipments are fully insured and may require signature upon delivery. Shipping costs are calculated at checkout based on destination and weight.",
+      "p3": "Once your order ships, you will receive a tracking number by email. We are not responsible for delays caused by customs or carriers. For Florida and U.S. customers, we aim for the fastest, most reliable service."
+    },
+    "refund": {
+      "title": "Refund Policy",
+      "intro": "We want you to be completely satisfied with your purchase.",
+      "p1": "Unworn, unaltered items in original packaging may be returned within 30 days of delivery for a full refund to the original payment method. Items must be in resalable condition.",
+      "p2": "To initiate a return, contact us at contact@savjewelry.com with your order number. We will provide return instructions. Refunds are processed within 5–10 business days after we receive and inspect the item.",
+      "p3": "Custom or personalized pieces, and items marked final sale, are non-refundable. This policy applies to purchases made in Florida and all U.S. and international orders, subject to applicable law."
+    }
+  },
+  "reviews": {
+    "title": "Customer Reviews",
+    "reviewer1": "Eleanor M.",
+    "review1": "Exquisite craftsmanship. The piece arrived beautifully presented and has become a daily staple.",
+    "reviewer2": "James L.",
+    "review2": "Outstanding quality and timeless design. Exactly as described. Will purchase again.",
+    "reviewer3": "Sophie R.",
+    "review3": "A true investment piece. The attention to detail is remarkable. Highly recommend."
+  }
+}
