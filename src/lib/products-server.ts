@@ -8,12 +8,11 @@ import {
 export async function getProductsFromFile(): Promise<Product[]> {
   try {
     const fromDb = await getProductsFromSupabase();
-    const fromDbIds = new Set(fromDb.map((p) => p.id));
-    const extra = staticProducts.filter((p) => !fromDbIds.has(p.id));
-    return fromDb.length > 0 ? [...fromDb, ...extra] : [...staticProducts];
+    if (fromDb.length > 0) return fromDb;
   } catch {
-    return [...staticProducts];
+    // fallback
   }
+  return [...staticProducts];
 }
 
 export async function getProductByIdFromFile(id: string): Promise<Product | undefined> {

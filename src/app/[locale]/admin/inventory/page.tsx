@@ -83,6 +83,7 @@ export default function AdminInventoryPage() {
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
                 <tr className="border-b border-noir-900/10 bg-white/80">
+                  <th className="w-16 px-4 py-4 font-medium text-noir-700"> </th>
                   <th className="px-6 py-4 font-medium text-noir-700">Product</th>
                   <th className="px-6 py-4 font-medium text-noir-700">Category</th>
                   <th className="px-6 py-4 font-medium text-noir-700">Price</th>
@@ -90,8 +91,23 @@ export default function AdminInventoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((p) => (
+                {products.map((p) => {
+                  const thumb = p.images?.[0] ?? p.image ?? "";
+                  return (
                   <tr key={p.id} className="border-b border-noir-900/5 hover:bg-white/50">
+                    <td className="w-16 px-4 py-3">
+                      {thumb ? (
+                        <img
+                          src={thumb}
+                          alt=""
+                          className="h-12 w-12 rounded-lg object-cover bg-noir-100"
+                          width={48}
+                          height={48}
+                        />
+                      ) : (
+                        <span className="inline-block h-12 w-12 rounded-lg bg-noir-100" />
+                      )}
+                    </td>
                     <td className="px-6 py-4 font-medium text-noir-900">{p.name}</td>
                     <td className="px-6 py-4 text-noir-600">{p.category}</td>
                     <td className="px-6 py-4 text-noir-900">${p.priceUsd}</td>
@@ -113,7 +129,8 @@ export default function AdminInventoryPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
