@@ -15,6 +15,12 @@ export type Settings = {
   unique_piece_label: string | null;
   /** Ex: "Envio com seguro incluído". Vazio = não exibe. */
   shipping_insured_text: string | null;
+  order_bump_enabled: boolean;
+  order_bump_name: string | null;
+  order_bump_description: string | null;
+  order_bump_price_usd: number | null;
+  order_bump_compare_at_price_usd: number | null;
+  order_bump_image_url: string | null;
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -23,7 +29,7 @@ export async function getSettings(): Promise<Settings> {
     const { data, error } = await supabase
       .from("settings")
       .select(
-        "instagram_url, facebook_url, contact_email, contact_phone, shipping_fee_usd, site_logo_url, site_icon_url, home_hero_banner_desktop_url, home_hero_banner_mobile_url, meta_pixel_id, unique_piece_label, shipping_insured_text"
+        "instagram_url, facebook_url, contact_email, contact_phone, shipping_fee_usd, site_logo_url, site_icon_url, home_hero_banner_desktop_url, home_hero_banner_mobile_url, meta_pixel_id, unique_piece_label, shipping_insured_text, order_bump_enabled, order_bump_name, order_bump_description, order_bump_price_usd, order_bump_compare_at_price_usd, order_bump_image_url"
       )
       .eq("id", 1)
       .single();
@@ -41,6 +47,12 @@ export async function getSettings(): Promise<Settings> {
         meta_pixel_id: null,
         unique_piece_label: null,
         shipping_insured_text: null,
+        order_bump_enabled: true,
+        order_bump_name: null,
+        order_bump_description: null,
+        order_bump_price_usd: null,
+        order_bump_compare_at_price_usd: null,
+        order_bump_image_url: null,
       };
     }
     const fee = data.shipping_fee_usd != null ? Number(data.shipping_fee_usd) : 5;
@@ -57,6 +69,19 @@ export async function getSettings(): Promise<Settings> {
       meta_pixel_id: data.meta_pixel_id ?? null,
       unique_piece_label: data.unique_piece_label ?? null,
       shipping_insured_text: data.shipping_insured_text ?? null,
+      order_bump_enabled: data.order_bump_enabled ?? true,
+      order_bump_name: data.order_bump_name ?? null,
+      order_bump_description: data.order_bump_description ?? null,
+      order_bump_price_usd:
+        data.order_bump_price_usd != null && !Number.isNaN(Number(data.order_bump_price_usd))
+          ? Number(data.order_bump_price_usd)
+          : null,
+      order_bump_compare_at_price_usd:
+        data.order_bump_compare_at_price_usd != null &&
+        !Number.isNaN(Number(data.order_bump_compare_at_price_usd))
+          ? Number(data.order_bump_compare_at_price_usd)
+          : null,
+      order_bump_image_url: data.order_bump_image_url ?? null,
     };
   } catch {
     return {
@@ -72,6 +97,12 @@ export async function getSettings(): Promise<Settings> {
       meta_pixel_id: null,
       unique_piece_label: null,
       shipping_insured_text: null,
+      order_bump_enabled: true,
+      order_bump_name: null,
+      order_bump_description: null,
+      order_bump_price_usd: null,
+      order_bump_compare_at_price_usd: null,
+      order_bump_image_url: null,
     };
   }
 }
@@ -95,6 +126,18 @@ export async function updateSettings(updates: Partial<Settings>): Promise<{ erro
     if (updates.meta_pixel_id !== undefined) payload.meta_pixel_id = updates.meta_pixel_id || null;
     if (updates.unique_piece_label !== undefined) payload.unique_piece_label = updates.unique_piece_label || null;
     if (updates.shipping_insured_text !== undefined) payload.shipping_insured_text = updates.shipping_insured_text || null;
+    if (updates.order_bump_enabled !== undefined) payload.order_bump_enabled = !!updates.order_bump_enabled;
+    if (updates.order_bump_name !== undefined) payload.order_bump_name = updates.order_bump_name || null;
+    if (updates.order_bump_description !== undefined) payload.order_bump_description = updates.order_bump_description || null;
+    if (updates.order_bump_price_usd !== undefined) {
+      const v = Number(updates.order_bump_price_usd);
+      payload.order_bump_price_usd = Number.isFinite(v) && v >= 0 ? v : null;
+    }
+    if (updates.order_bump_compare_at_price_usd !== undefined) {
+      const v = Number(updates.order_bump_compare_at_price_usd);
+      payload.order_bump_compare_at_price_usd = Number.isFinite(v) && v >= 0 ? v : null;
+    }
+    if (updates.order_bump_image_url !== undefined) payload.order_bump_image_url = updates.order_bump_image_url || null;
     const { error } = await supabase.from("settings").update(payload).eq("id", 1);
     if (error) return { error: error.message };
     return {};

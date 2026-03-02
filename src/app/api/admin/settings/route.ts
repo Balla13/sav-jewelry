@@ -40,6 +40,12 @@ export async function PATCH(request: NextRequest) {
       meta_pixel_id,
       unique_piece_label,
       shipping_insured_text,
+      order_bump_enabled,
+      order_bump_name,
+      order_bump_description,
+      order_bump_price_usd,
+      order_bump_compare_at_price_usd,
+      order_bump_image_url,
     } = body as {
       instagram_url?: string;
       facebook_url?: string;
@@ -53,6 +59,12 @@ export async function PATCH(request: NextRequest) {
       meta_pixel_id?: string | null;
       unique_piece_label?: string | null;
       shipping_insured_text?: string | null;
+      order_bump_enabled?: boolean;
+      order_bump_name?: string | null;
+      order_bump_description?: string | null;
+      order_bump_price_usd?: number | null;
+      order_bump_compare_at_price_usd?: number | null;
+      order_bump_image_url?: string | null;
     };
     const result = await updateSettings({
       ...(instagram_url !== undefined && { instagram_url: instagram_url || null }),
@@ -67,6 +79,12 @@ export async function PATCH(request: NextRequest) {
       ...(meta_pixel_id !== undefined && { meta_pixel_id: meta_pixel_id || null }),
       ...(unique_piece_label !== undefined && { unique_piece_label: unique_piece_label || null }),
       ...(shipping_insured_text !== undefined && { shipping_insured_text: shipping_insured_text || null }),
+      ...(order_bump_enabled !== undefined && { order_bump_enabled }),
+      ...(order_bump_name !== undefined && { order_bump_name: order_bump_name || null }),
+      ...(order_bump_description !== undefined && { order_bump_description: order_bump_description || null }),
+      ...(order_bump_price_usd !== undefined && { order_bump_price_usd }),
+      ...(order_bump_compare_at_price_usd !== undefined && { order_bump_compare_at_price_usd }),
+      ...(order_bump_image_url !== undefined && { order_bump_image_url: order_bump_image_url || null }),
     });
     if (result.error) return NextResponse.json({ error: result.error }, { status: 500 });
     const settings = await getSettings();

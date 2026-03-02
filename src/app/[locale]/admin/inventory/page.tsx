@@ -69,6 +69,12 @@ export default function AdminInventoryPage() {
           >
             Settings
           </Link>
+          <Link
+            href="/admin/order-bump"
+            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
+          >
+            Order bump
+          </Link>
           <Link href="/collection" className="text-sm font-medium text-noir-600 hover:text-noir-900">
             {t("backToStore")}
           </Link>

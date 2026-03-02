@@ -57,6 +57,14 @@ export default function CheckoutShipping() {
   const clearCart = useCartStore((s) => s.clearCart);
   const items = useCartStore((s) => s.items);
   const [includeCleaningKit, setIncludeCleaningKit] = useState(false);
+  const [kitEnabled, setKitEnabled] = useState(true);
+  const [kitName, setKitName] = useState("SÁV+ Jewelry Cleaning Kit");
+  const [kitDescription, setKitDescription] = useState(
+    "Keep your pieces radiant with our signature revival formula."
+  );
+  const [kitImageUrl, setKitImageUrl] = useState("/Limpa Joias SAV.png");
+  const [kitPriceState, setKitPriceState] = useState(29);
+  const [kitComparePriceState, setKitComparePriceState] = useState(49);
   const lineItems = items
     .map((item) => {
       const product: Product | null = item.snapshot
@@ -75,10 +83,11 @@ export default function CheckoutShipping() {
     .filter(Boolean) as { product: Product; quantity: number }[];
   const baseSubtotal = lineItems.reduce((acc, { product, quantity }) => acc + product.priceUsd * quantity, 0);
   const baseQuantity = lineItems.reduce((acc, { quantity }) => acc + quantity, 0);
-  const kitPrice = 29;
-  const kitComparePrice = 49;
-  const subtotal = includeCleaningKit ? baseSubtotal + kitPrice : baseSubtotal;
-  const totalQuantity = includeCleaningKit ? baseQuantity + 1 : baseQuantity;
+  const kitPrice = kitPriceState;
+  const kitComparePrice = kitComparePriceState;
+  const withKit = includeCleaningKit && kitEnabled;
+  const subtotal = withKit ? baseSubtotal + kitPrice : baseSubtotal;
+  const totalQuantity = withKit ? baseQuantity + 1 : baseQuantity;
   const qualifiesFreeShipping = totalQuantity >= 2 || subtotal >= 299;
   const shipping = qualifiesFreeShipping ? 0 : shippingFeeUsd;
   const total = subtotal + shipping;
@@ -93,6 +102,19 @@ export default function CheckoutShipping() {
       .then((data) => {
         const fee = data?.shipping_fee_usd;
         if (typeof fee === "number" && fee >= 0) setShippingFeeUsd(fee);
+        if (typeof data?.order_bump_enabled === "boolean") setKitEnabled(data.order_bump_enabled);
+        if (data?.order_bump_name) setKitName(data.order_bump_name);
+        if (data?.order_bump_description) setKitDescription(data.order_bump_description);
+        if (data?.order_bump_price_usd != null && !Number.isNaN(Number(data.order_bump_price_usd))) {
+          setKitPriceState(Number(data.order_bump_price_usd));
+        }
+        if (
+          data?.order_bump_compare_at_price_usd != null &&
+          !Number.isNaN(Number(data.order_bump_compare_at_price_usd))
+        ) {
+          setKitComparePriceState(Number(data.order_bump_compare_at_price_usd));
+        }
+        if (data?.order_bump_image_url) setKitImageUrl(data.order_bump_image_url);
       })
       .catch(() => {});
   }, []);
@@ -105,7 +127,7 @@ export default function CheckoutShipping() {
       quantity,
       priceUsd: product.priceUsd,
     }));
-    if (includeCleaningKit) {
+    if (withKit) {
       sessionItems.push({
         name: "SÁV+ Jewelry Cleaning Kit",
         quantity: 1,
@@ -156,7 +178,7 @@ export default function CheckoutShipping() {
         body: JSON.stringify({
           items: [
             ...lineItems.map(({ product, quantity }) => ({ productId: product.id, quantity })),
-            ...(includeCleaningKit ? [{ productId: "cleaning-kit", quantity: 1 }] : []),
+            ...(withKit ? [{ productId: "cleaning-kit", quantity: 1 }] : []),
           ],
           locale: locale as "en" | "es",
           coupon_code: (appliedCoupon || couponCode).trim() || undefined,
@@ -381,13 +403,13 @@ export default function CheckoutShipping() {
                 ))}
               </ul>
 
-              {!clientSecret && (
+              {kitEnabled && !clientSecret && (
                 <div className="mt-4 rounded-2xl border border-noir-900/10 bg-white p-4 sm:p-5">
                   <div className="flex gap-3">
                     <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-section sm:h-24 sm:w-24">
                       <Image
-                        src="/Limpa Joias SAV.png"
-                        alt="SÁV+ Jewelry Cleaning Kit"
+                        src={kitImageUrl}
+                        alt={kitName}
                         fill
                         className="object-cover object-center"
                         sizes="64px"
