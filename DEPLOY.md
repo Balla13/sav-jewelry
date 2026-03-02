@@ -32,8 +32,8 @@ Para o site continuar funcionando igual (Stripe, Supabase, Resend, cron, etc.), 
    |------|--------------------|
    | `NEXT_PUBLIC_SUPABASE_URL` | No seu `.env.local` |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No seu `.env.local` |
-   | `SUPABASE_SERVICE_ROLE_KEY` | No seu `.env.local` |
-   | `ADMIN_PASSWORD` | A senha que você usa para entrar no /admin |
+   | `SUPABASE_SERVICE_ROLE_KEY` | No seu `.env.local`. **Obrigatório** — sem isso o admin não consegue criar/editar produtos no Supabase. |
+   | `ADMIN_PASSWORD` | Senha do painel /admin. **Obrigatório em produção** — sem isso não dá para criar/editar produtos. Use a mesma em todo lugar. |
    | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No seu `.env.local` (pk_live_...) |
    | `STRIPE_SECRET_KEY` | No seu `.env.local` (sk_live_...) |
    | `RESEND_API_KEY` | No seu `.env.local` (chave do Resend) |

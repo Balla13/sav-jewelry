@@ -7,8 +7,10 @@ export async function POST(request: NextRequest) {
     const { password } = await request.json();
     if (password === ADMIN_PASSWORD) {
       const res = NextResponse.json({ success: true });
+      const isSecure = process.env.VERCEL === "1" || (typeof request.nextUrl?.protocol === "string" && request.nextUrl.protocol === "https:");
       res.cookies.set("admin_token", ADMIN_PASSWORD, {
         httpOnly: true,
+        secure: isSecure,
         sameSite: "lax",
         maxAge: 60 * 60 * 24,
         path: "/",
