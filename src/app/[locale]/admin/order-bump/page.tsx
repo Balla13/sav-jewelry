@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { resolveOrderBumpImageSrc } from "@/lib/order-bump-image";
 
 export default function AdminOrderBumpPage() {
   const router = useRouter();
@@ -173,16 +174,19 @@ export default function AdminOrderBumpPage() {
             type="text"
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="/Limpa Joias SAV.png ou URL pública"
+            placeholder="/Limpa-Joias-SAV.png ou URL completa (evite espaços no caminho)"
             className="mt-1 w-full rounded-2xl border border-champagne-300 px-4 py-2.5 text-noir-900"
           />
           {imageUrl && (
             <div className="mt-3">
               <p className="text-xs text-noir-500 mb-1">Preview</p>
               <img
-                src={imageUrl}
+                src={resolveOrderBumpImageSrc(imageUrl)}
                 alt="Preview"
                 className="h-24 w-24 rounded-xl border border-noir-900/10 object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
               />
             </div>
           )}

@@ -62,9 +62,6 @@ function AdminPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -81,11 +78,7 @@ function AdminPageContent() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState("");
-
-  useEffect(() => {
-    fetch("/api/admin/login", { method: "POST", body: JSON.stringify({}), credentials: "include" }).catch(() => {});
-    setAuthenticated(false);
-  }, []);
+  const [error, setError] = useState("");
 
   const fetchProducts = async () => {
     const res = await fetch("/api/admin/products", { credentials: "include" });
@@ -96,12 +89,12 @@ function AdminPageContent() {
   };
 
   useEffect(() => {
-    if (authenticated) fetchProducts();
-  }, [authenticated]);
+    fetchProducts();
+  }, []);
 
   const editId = searchParams.get("edit");
   useEffect(() => {
-    if (!authenticated || !editId || products.length === 0) return;
+    if (!editId || products.length === 0) return;
     const p = products.find((x) => x.id === editId);
     if (p) {
       setEditingId(p.id);
@@ -117,21 +110,7 @@ function AdminPageContent() {
         imageUrls: (p.images || [p.image]).join("\n"),
       });
     }
-  }, [authenticated, editId, products]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    const res = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-      credentials: "include",
-    });
-    const data = await res.json();
-    if (res.ok) setAuthenticated(true);
-    else setError(data.error || "Login failed");
-  };
+  }, [editId, products]);
 
   const handleEdit = (p: Product) => {
     setEditingId(p.id);
@@ -258,44 +237,6 @@ function AdminPageContent() {
       } else setError(data.error || "Failed to add product");
     }
   };
-
-  if (authenticated === null) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-noir-600">{t("loading")}</p>
-      </div>
-    );
-  }
-
-  if (!authenticated) {
-    return (
-      <div className="mx-auto max-w-sm px-4 py-16">
-        <h1 className="font-display text-2xl font-semibold text-noir-900">{t("login")}</h1>
-        <form onSubmit={handleLogin} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="admin-password" className="block text-sm font-medium text-noir-700">
-              {t("password")}
-            </label>
-            <input
-              id="admin-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-2xl border border-champagne-300 px-4 py-2.5 text-noir-900"
-              required
-            />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            className="w-full rounded-full bg-noir-900 py-2.5 text-sm font-medium text-white transition hover:bg-noir-800 hover:shadow-lg"
-          >
-            {t("submitLogin")}
-          </button>
-        </form>
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">

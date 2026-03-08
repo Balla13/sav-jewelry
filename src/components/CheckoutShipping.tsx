@@ -20,6 +20,7 @@ import {
   getMinLength,
   fetchPostalLookup,
 } from "@/lib/postal-code-lookup";
+import { resolveOrderBumpImageSrc } from "@/lib/order-bump-image";
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
@@ -489,7 +490,7 @@ export default function CheckoutShipping() {
                   <div className="flex gap-3">
                     <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-section sm:h-24 sm:w-24">
                       <Image
-                        src={kitImageUrl}
+                        src={resolveOrderBumpImageSrc(kitImageUrl) || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect fill='%23f0f0f0' width='64' height='64'/%3E%3C/svg%3E"}
                         alt={kitName}
                         fill
                         className="object-cover object-center"

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
         httpOnly: true,
         secure: isSecure,
         sameSite: "lax",
-        maxAge: 60 * 60 * 24,
+        maxAge: 60 * 10, // 10 minutos
         path: "/",
       });
       return res;

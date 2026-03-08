@@ -211,7 +211,7 @@ export default function AdminSettingsPage() {
       <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-noir-900/10 bg-section p-6">
         <h2 className="font-display text-lg font-medium text-noir-900">Social media links</h2>
         <p className="text-sm text-noir-600">
-          These links and contact info appear in the site footer. Leave blank to hide.
+          These links and contact info appear in the site footer. Leave blank to hide. Values below are loaded from the database — if they are empty, fill in and save.
         </p>
         <div>
           <label htmlFor="contact_email" className="block text-sm font-medium text-noir-700">
