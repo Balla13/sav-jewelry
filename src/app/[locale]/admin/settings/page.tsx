@@ -30,6 +30,8 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [backupJson, setBackupJson] = useState("");
+  const [applyingBackup, setApplyingBackup] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
   const heroDesktopInputRef = useRef<HTMLInputElement>(null);
@@ -137,6 +139,113 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const exportBackup = () => {
+    const obj = {
+      contact_email: contactEmail || null,
+      contact_phone: contactPhone || null,
+      instagram_url: instagram || null,
+      facebook_url: facebook || null,
+      meta_pixel_id: metaPixelId || null,
+      shipping_fee_usd: Number(shippingFeeUsd) || 5,
+      international_shipping_usd: Number(internationalShippingUsd) || 35,
+      unique_piece_label: uniquePieceLabel || null,
+      shipping_insured_text: shippingInsuredText || null,
+    };
+    const json = JSON.stringify(obj, null, 2);
+    setBackupJson(json);
+    void navigator.clipboard.writeText(json).then(() => setSuccess("Backup copied to clipboard and pasted below."));
+  };
+
+  const exportFullBackup = async () => {
+    setError("");
+    try {
+      const res = await fetch("/api/admin/settings", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      const json = JSON.stringify(
+        {
+          contact_email: data.contact_email ?? null,
+          contact_phone: data.contact_phone ?? null,
+          instagram_url: data.instagram_url ?? null,
+          facebook_url: data.facebook_url ?? null,
+          meta_pixel_id: data.meta_pixel_id ?? null,
+          shipping_fee_usd: data.shipping_fee_usd ?? 5,
+          international_shipping_usd: data.international_shipping_usd ?? 35,
+          unique_piece_label: data.unique_piece_label ?? null,
+          shipping_insured_text: data.shipping_insured_text ?? null,
+          order_bump_enabled: data.order_bump_enabled ?? true,
+          order_bump_name: data.order_bump_name ?? null,
+          order_bump_description: data.order_bump_description ?? null,
+          order_bump_price_usd: data.order_bump_price_usd ?? null,
+          order_bump_compare_at_price_usd: data.order_bump_compare_at_price_usd ?? null,
+          order_bump_image_url: data.order_bump_image_url ?? null,
+        },
+        null,
+        2
+      );
+      setBackupJson(json);
+      void navigator.clipboard.writeText(json).then(() => setSuccess("Full backup from database copied and pasted below."));
+    } catch {
+      setError("Could not export from database.");
+    }
+  };
+
+  const applyBackup = async () => {
+    setError("");
+    setSuccess("");
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(backupJson);
+    } catch {
+      setError("Invalid JSON. Check the format.");
+      return;
+    }
+    setApplyingBackup(true);
+    try {
+      const payload: Record<string, unknown> = {};
+      if (data.contact_email !== undefined) payload.contact_email = data.contact_email ?? null;
+      if (data.contact_phone !== undefined) payload.contact_phone = data.contact_phone ?? null;
+      if (data.instagram_url !== undefined) payload.instagram_url = data.instagram_url ?? null;
+      if (data.facebook_url !== undefined) payload.facebook_url = data.facebook_url ?? null;
+      if (data.meta_pixel_id !== undefined) payload.meta_pixel_id = data.meta_pixel_id ?? null;
+      if (data.shipping_fee_usd !== undefined) payload.shipping_fee_usd = Number(data.shipping_fee_usd) || 5;
+      if (data.international_shipping_usd !== undefined) payload.international_shipping_usd = Number(data.international_shipping_usd) || 35;
+      if (data.unique_piece_label !== undefined) payload.unique_piece_label = data.unique_piece_label ?? null;
+      if (data.shipping_insured_text !== undefined) payload.shipping_insured_text = data.shipping_insured_text ?? null;
+      if (data.order_bump_enabled !== undefined) payload.order_bump_enabled = !!data.order_bump_enabled;
+      if (data.order_bump_name !== undefined) payload.order_bump_name = data.order_bump_name ?? null;
+      if (data.order_bump_description !== undefined) payload.order_bump_description = data.order_bump_description ?? null;
+      if (data.order_bump_price_usd !== undefined) payload.order_bump_price_usd = Number(data.order_bump_price_usd) ?? null;
+      if (data.order_bump_compare_at_price_usd !== undefined) payload.order_bump_compare_at_price_usd = Number(data.order_bump_compare_at_price_usd) ?? null;
+      if (data.order_bump_image_url !== undefined) payload.order_bump_image_url = data.order_bump_image_url ?? null;
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(resData.error || "Failed to apply backup");
+      } else {
+        setSuccess("Backup applied. Form updated from database.");
+        setInstagram(String(resData.instagram_url ?? ""));
+        setFacebook(String(resData.facebook_url ?? ""));
+        setContactEmail(String(resData.contact_email ?? ""));
+        setContactPhone(String(resData.contact_phone ?? ""));
+        setShippingFeeUsd(String(resData.shipping_fee_usd ?? "5"));
+        setInternationalShippingUsd(String(resData.international_shipping_usd ?? "35"));
+        setMetaPixelId(String(resData.meta_pixel_id ?? ""));
+        setUniquePieceLabel(String(resData.unique_piece_label ?? ""));
+        setShippingInsuredText(String(resData.shipping_insured_text ?? ""));
+      }
+    } catch {
+      setError("Failed to apply backup");
+    } finally {
+      setApplyingBackup(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -209,7 +318,43 @@ export default function AdminSettingsPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-noir-900/10 bg-section p-6">
-        <h2 className="font-display text-lg font-medium text-noir-900">Social media links</h2>
+        <h2 className="font-display text-lg font-medium text-noir-900">Restore backup</h2>
+        <p className="text-sm text-noir-600">
+          If you have a backup of your settings (email, phone, social links, Pixel, order bump, etc.), paste the JSON below and click Apply. Product photos are stored separately — re-upload them in Add product / Inventory if needed.
+        </p>
+        <textarea
+          value={backupJson}
+          onChange={(e) => setBackupJson(e.target.value)}
+          placeholder={'{\n  "contact_email": "your@email.com",\n  "contact_phone": "+55 11 99999-9999",\n  "instagram_url": "https://instagram.com/yourprofile",\n  "facebook_url": "https://facebook.com/yourpage",\n  "meta_pixel_id": "1234567890",\n  "shipping_fee_usd": 5,\n  "international_shipping_usd": 35,\n  "order_bump_name": "SÁV+ Jewelry Cleaning Kit",\n  "order_bump_description": "Keep your pieces radiant...",\n  "order_bump_price_usd": 29,\n  "order_bump_compare_at_price_usd": 49,\n  "order_bump_image_url": "/Limpa-Joias-SAV.png"\n}'}
+          rows={12}
+          className="mt-1 w-full rounded-2xl border border-champagne-300 px-4 py-2.5 font-mono text-sm text-noir-900 placeholder:text-noir-400"
+        />
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={applyBackup}
+            disabled={applyingBackup || !backupJson.trim()}
+            className="rounded-full border border-noir-900 bg-noir-900 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-noir-800 disabled:opacity-50"
+          >
+            {applyingBackup ? "Applying…" : "Apply backup"}
+          </button>
+          <button
+            type="button"
+            onClick={exportBackup}
+            className="rounded-full border border-noir-900/30 bg-white px-6 py-2.5 text-sm font-medium text-noir-900 transition hover:bg-noir-900/5"
+          >
+            Export form as backup
+          </button>
+          <button
+            type="button"
+            onClick={exportFullBackup}
+            className="rounded-full border border-noir-900/30 bg-white px-6 py-2.5 text-sm font-medium text-noir-900 transition hover:bg-noir-900/5"
+          >
+            Export from database (full)
+          </button>
+        </div>
+
+        <h2 className="font-display text-lg font-medium text-noir-900 pt-4">Social media links</h2>
         <p className="text-sm text-noir-600">
           These links and contact info appear in the site footer. Leave blank to hide. Values below are loaded from the database — if they are empty, fill in and save.
         </p>

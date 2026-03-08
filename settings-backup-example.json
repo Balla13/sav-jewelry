@@ -1,0 +1,17 @@
+{
+  "contact_email": "seu-email@exemplo.com",
+  "contact_phone": "+55 11 99999-9999",
+  "instagram_url": "https://instagram.com/sua_conta",
+  "facebook_url": "https://facebook.com/sua_pagina",
+  "meta_pixel_id": "SEU_PIXEL_ID_FACEBOOK",
+  "shipping_fee_usd": 5,
+  "international_shipping_usd": 35,
+  "unique_piece_label": "Peça única",
+  "shipping_insured_text": "Envio com seguro incluído",
+  "order_bump_enabled": true,
+  "order_bump_name": "SÁV+ Jewelry Cleaning Kit",
+  "order_bump_description": "Keep your pieces radiant with our signature revival formula.",
+  "order_bump_price_usd": 29,
+  "order_bump_compare_at_price_usd": 49,
+  "order_bump_image_url": "/Limpa-Joias-SAV.png"
+}
