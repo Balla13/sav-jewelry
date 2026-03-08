@@ -20,6 +20,7 @@ export async function GET() {
       contact_email: null,
       contact_phone: null,
       shipping_fee_usd: 5,
+      international_shipping_usd: 35,
       site_logo_url: null,
       site_icon_url: null,
       home_hero_banner_desktop_url: null,

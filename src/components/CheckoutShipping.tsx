@@ -13,6 +13,13 @@ import { useCartStore } from "@/store/cart-store";
 import { getProductById, formatPrice } from "@/data/products";
 import type { Product } from "@/data/products";
 import CheckoutPaymentForm from "@/components/CheckoutPaymentForm";
+import { computeShipping, isDomestic } from "@/lib/shipping";
+import {
+  isPostalLookupSupported,
+  normalizePostal,
+  getMinLength,
+  fetchPostalLookup,
+} from "@/lib/postal-code-lookup";
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
@@ -34,6 +41,7 @@ export default function CheckoutShipping() {
   const [lastName, setLastName] = useState("");
   const [address, setAddress] = useState("");
   const [shippingFeeUsd, setShippingFeeUsd] = useState(5);
+  const [internationalShippingUsd, setInternationalShippingUsd] = useState(35);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [previewAmounts, setPreviewAmounts] = useState<{
@@ -56,6 +64,8 @@ export default function CheckoutShipping() {
 
   const clearCart = useCartStore((s) => s.clearCart);
   const items = useCartStore((s) => s.items);
+  const shippingCountry = useCartStore((s) => s.shippingCountry);
+  const setShippingCountry = useCartStore((s) => s.setShippingCountry);
   const [includeCleaningKit, setIncludeCleaningKit] = useState(false);
   const [kitEnabled, setKitEnabled] = useState(true);
   const [kitName, setKitName] = useState("SÁV+ Jewelry Cleaning Kit");
@@ -88,9 +98,17 @@ export default function CheckoutShipping() {
   const withKit = includeCleaningKit && kitEnabled;
   const subtotal = withKit ? baseSubtotal + kitPrice : baseSubtotal;
   const totalQuantity = withKit ? baseQuantity + 1 : baseQuantity;
-  const qualifiesFreeShipping = totalQuantity >= 2 || subtotal >= 299;
-  const shipping = qualifiesFreeShipping ? 0 : shippingFeeUsd;
+  const countryCode = (shippingCountry || "US").trim().toUpperCase();
+  const shippingResult = computeShipping({
+    countryCode,
+    subtotalCents: Math.round(subtotal * 100),
+    totalQuantity,
+    domesticFeeUsd: shippingFeeUsd,
+    internationalFeeUsd: internationalShippingUsd,
+  });
+  const shipping = shippingResult.shippingUsd;
   const total = subtotal + shipping;
+  const qualifiesFreeShipping = shippingResult.isFreeShipping;
 
   useEffect(() => {
     if (isSuccess) clearCart();
@@ -102,6 +120,8 @@ export default function CheckoutShipping() {
       .then((data) => {
         const fee = data?.shipping_fee_usd;
         if (typeof fee === "number" && fee >= 0) setShippingFeeUsd(fee);
+        const intlFee = data?.international_shipping_usd;
+        if (typeof intlFee === "number" && intlFee >= 0) setInternationalShippingUsd(intlFee);
         if (typeof data?.order_bump_enabled === "boolean") setKitEnabled(data.order_bump_enabled);
         if (data?.order_bump_name) setKitName(data.order_bump_name);
         if (data?.order_bump_description) setKitDescription(data.order_bump_description);
@@ -145,23 +165,25 @@ export default function CheckoutShipping() {
     }).catch(() => {});
   };
 
+  // Auto-fill city, state (and street for Brazil) from postal code for supported countries
   useEffect(() => {
-    const zip = zipCode.replace(/\D/g, "").slice(0, 5);
-    if (zip.length !== 5) return;
+    if (!isPostalLookupSupported(countryCode)) return;
+    const normalized = normalizePostal(countryCode, zipCode);
+    const minLen = getMinLength(countryCode);
+    if (!normalized || normalized.length < minLen) return;
     let cancelled = false;
-    fetch(`https://api.zippopotam.us/us/${zip}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (cancelled || !data?.places?.[0]) return;
-        const place = data.places[0];
-        setCity(place["place name"] || "");
-        setState(place["state abbreviation"] || "");
+    fetchPostalLookup(countryCode, normalized)
+      .then((result) => {
+        if (cancelled || !result) return;
+        setCity(result.city);
+        setState(result.state);
+        if (result.street) setAddress(result.street);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [zipCode]);
+  }, [zipCode, countryCode]);
 
   const handlePayNow = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,11 +208,13 @@ export default function CheckoutShipping() {
             email,
             firstName,
             lastName,
+            country: countryCode,
             zipCode,
             address,
             city,
             state,
           },
+          country_code: countryCode,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -296,36 +320,93 @@ export default function CheckoutShipping() {
                 />
               </div>
             </div>
+            <div>
+              <label htmlFor="checkout-country" className="mb-2 block text-sm font-medium text-noir-700">
+                {tCheckout("country")} *
+              </label>
+              <select
+                id="checkout-country"
+                value={countryCode}
+                onChange={(e) => setShippingCountry(e.target.value)}
+                className={inputClass}
+                required
+              >
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="GB">United Kingdom</option>
+                <option value="MX">Mexico</option>
+                <option value="BR">Brazil</option>
+                <option value="ES">Spain</option>
+                <option value="FR">France</option>
+                <option value="DE">Germany</option>
+                <option value="IT">Italy</option>
+                <option value="AU">Australia</option>
+                <option value="PT">Portugal</option>
+                <option value="AR">Argentina</option>
+                <option value="CO">Colombia</option>
+                <option value="CL">Chile</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            {!isDomestic(countryCode) && (
+              <p className="rounded-2xl border border-gold/40 bg-gold/5 px-4 py-3 text-sm text-noir-700">
+                {tCheckout("internationalShippingMessage", { amount: formatPrice(internationalShippingUsd) })}
+              </p>
+            )}
             <div className="rounded-2xl border-2 border-gold/60 bg-gold/5 px-4 py-3 ring-2 ring-gold/30">
               <p className="mb-2 text-xs font-medium uppercase tracking-wider text-gold/90">
                 {tCheckout("zipCodeStart")}
               </p>
               <label htmlFor="checkout-zip" className="mb-2 block text-sm font-medium text-noir-700">
-                {t("zipCode")} *
+                {t("zipCode")} {isDomestic(countryCode) ? "*" : ""}
               </label>
               <input
                 id="checkout-zip"
                 type="text"
-                inputMode="numeric"
-                placeholder={t("zipPlaceholder")}
+                inputMode={countryCode === "US" || countryCode === "MX" || countryCode === "BR" ? "numeric" : "text"}
+                placeholder={
+                  countryCode === "BR"
+                    ? "CEP (8 dígitos)"
+                    : countryCode === "CA"
+                      ? "A1A 1A1"
+                      : countryCode === "US"
+                        ? t("zipPlaceholder")
+                        : "Postal code"
+                }
                 value={zipCode}
-                onChange={(e) => setZipCode(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (countryCode === "US") setZipCode(v.replace(/\D/g, "").slice(0, 5));
+                  else if (countryCode === "MX" || countryCode === "DE" || countryCode === "FR" || countryCode === "ES" || countryCode === "IT") setZipCode(v.replace(/\D/g, "").slice(0, 5));
+                  else if (countryCode === "BR") setZipCode(v.replace(/\D/g, "").slice(0, 8));
+                  else if (countryCode === "PT") setZipCode(v.replace(/\D/g, "").slice(0, 7));
+                  else setZipCode(v.slice(0, 12));
+                }}
                 className={inputClass}
                 required
               />
               <AnimatePresence initial={false}>
-                {zipCode.trim().length >= 5 && (
-                  <motion.p
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="mt-3 flex items-center gap-2 overflow-hidden text-sm text-noir-600"
-                  >
-                    <Plane className="h-4 w-4 shrink-0 text-gold" aria-hidden />
-                    {t("shippingNote")}
-                  </motion.p>
-                )}
+                {isPostalLookupSupported(countryCode) &&
+                  zipCode.trim().length >= getMinLength(countryCode) && (
+                    <motion.p
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-3 flex items-center gap-2 overflow-hidden text-sm text-noir-600"
+                    >
+                      <Plane className="h-4 w-4 shrink-0 text-gold" aria-hidden />
+                      {countryCode === "US"
+                        ? t("shippingNote")
+                        : countryCode === "BR"
+                          ? locale === "es"
+                            ? "Ciudad, estado y calle se completan automáticamente."
+                            : "City, state and street filled automatically."
+                          : locale === "es"
+                            ? "Ciudad y estado se completan automáticamente."
+                            : "City and state filled automatically."}
+                    </motion.p>
+                  )}
               </AnimatePresence>
             </div>
             <div>
@@ -487,8 +568,12 @@ export default function CheckoutShipping() {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({
-                                items: lineItems.map(({ product, quantity }) => ({ productId: product.id, quantity })),
+                                items: [
+                                  ...lineItems.map(({ product, quantity }) => ({ productId: product.id, quantity })),
+                                  ...(withKit ? [{ productId: "cleaning-kit", quantity: 1 }] : []),
+                                ],
                                 coupon_code: code,
+                                country_code: countryCode,
                               }),
                             });
                             const data = await res.json().catch(() => ({}));
@@ -530,7 +615,11 @@ export default function CheckoutShipping() {
                       <span>{formatPrice(previewAmounts?.subtotal ?? subtotal)}</span>
                     </div>
                     <div className="flex items-center justify-between text-base text-noir-700">
-                      <span>{tCheckout("standardShipping")}</span>
+                      <span>
+                        {shippingResult.isInternational
+                          ? `${tCheckout("internationalShippingLabel")}:`
+                          : tCheckout("standardShipping")}
+                      </span>
                       <span>
                         {previewAmounts
                           ? formatPrice(previewAmounts.shipping)
@@ -568,7 +657,11 @@ export default function CheckoutShipping() {
                       <span>{formatPrice(paymentAmounts.subtotal)}</span>
                     </div>
                     <div className="flex items-center justify-between text-base text-noir-700">
-                      <span>{tCheckout("standardShipping")}</span>
+                      <span>
+                        {shippingResult.isInternational
+                          ? `${tCheckout("internationalShippingLabel")}:`
+                          : tCheckout("standardShipping")}
+                      </span>
                       <span>{formatPrice(paymentAmounts.shipping)}</span>
                     </div>
                     {paymentAmounts.discount > 0 && (

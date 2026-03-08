@@ -2,6 +2,7 @@
   "nav": {
     "home": "Inicio",
     "collection": "Colección",
+    "blog": "Blog",
     "about": "Nosotros",
     "contact": "Contacto",
     "language": "Idioma",
@@ -160,16 +161,20 @@
   },
   "checkout": {
     "checkout": "Pago",
+    "country": "País",
     "orderSummary": "Resumen del pedido",
     "email": "Correo electrónico",
     "firstName": "Nombre",
     "lastName": "Apellido",
     "name": "Nombre completo",
+    "country": "País",
     "address": "Dirección",
     "city": "Ciudad",
     "state": "Estado",
     "zipCodeStart": "Empieza con tu código postal para completar Ciudad y Estado",
     "standardShipping": "Envío estándar asegurado",
+    "internationalShippingLabel": "Envío internacional (tarifa fija)",
+    "internationalShippingMessage": "Envío internacional tarifa fija: {amount} a todo el mundo",
     "total": "Total",
     "payNow": "Pagar ahora",
     "backToCollection": "Volver a la colección"
@@ -197,6 +202,14 @@
       "p2": "Para iniciar una devolución, escríbanos a contact@savjewelry.com con su número de pedido. Le indicaremos los pasos. Los reembolsos se procesan en 5–10 días hábiles tras recibir e inspeccionar el artículo.",
       "p3": "Las piezas personalizadas o a medida, y los artículos en venta final, no son reembolsables. Esta política se aplica a compras en Florida y a pedidos nacionales e internacionales, según la ley aplicable."
     }
+  },
+  "blog": {
+    "title": "Journal",
+    "subtitle": "Ensayos sobre joyería vintage, artesanía y estilo atemporal.",
+    "latestTitle": "Novedades del Blog",
+    "readMore": "Leer más",
+    "viewAllPosts": "Ver todos los posts",
+    "backToBlog": "Volver al Journal"
   },
   "reviews": {
     "title": "Opiniones de clientes",

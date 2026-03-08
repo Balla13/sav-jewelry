@@ -17,9 +17,15 @@ export interface CartItem {
   snapshot?: CartItemSnapshot;
 }
 
+/** ISO 3166-1 alpha-2 country code for shipping (e.g. "US"). */
+const DEFAULT_SHIPPING_COUNTRY = "US";
+
 interface CartState {
   items: CartItem[];
   isOpen: boolean;
+  /** Shipping destination country (US = domestic, other = international). */
+  shippingCountry: string;
+  setShippingCountry: (code: string) => void;
   addItem: (productId: string, quantity?: number, snapshot?: CartItemSnapshot) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
@@ -35,6 +41,9 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       isOpen: false,
+      shippingCountry: DEFAULT_SHIPPING_COUNTRY,
+      setShippingCountry: (code) =>
+        set({ shippingCountry: String(code || DEFAULT_SHIPPING_COUNTRY).trim().toUpperCase() || DEFAULT_SHIPPING_COUNTRY }),
 
       addItem: (productId, quantity = 1, snapshot) =>
         set((state) => {
@@ -76,6 +85,6 @@ export const useCartStore = create<CartState>()(
       getTotalItems: () =>
         get().items.reduce((acc, item) => acc + item.quantity, 0),
     }),
-    { name: "jewelry-cart", partialize: (s) => ({ items: s.items }) }
+    { name: "jewelry-cart", partialize: (s) => ({ items: s.items, shippingCountry: s.shippingCountry }) }
   )
 );

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/client";
 import { getSettings } from "@/lib/supabase/settings";
+import { computeShipping } from "@/lib/shipping";
 
 export async function POST(request: NextRequest) {
   const secret = process.env.STRIPE_SECRET_KEY;
@@ -16,11 +17,14 @@ export async function POST(request: NextRequest) {
       locale = "en",
       shipping_address,
       coupon_code,
+      country_code,
     } = body as {
       items: { productId: string; quantity: number }[];
       locale?: "en" | "es";
-      shipping_address?: Record<string, unknown>;
+      shipping_address?: Record<string, unknown> & { country?: string };
       coupon_code?: string;
+      /** ISO country code (e.g. US). Used when shipping_address.country not set. */
+      country_code?: string;
     };
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -76,10 +80,18 @@ export async function POST(request: NextRequest) {
     }
     if (subtotalCents <= 0) return NextResponse.json({ error: "No valid products" }, { status: 400 });
 
-    const shippingFeeUsd = Number(settings.shipping_fee_usd) || 0;
-    const qualifiesFreeShipping = totalQuantity >= 2 || subtotalCents >= 29900;
-    const shippingCents = qualifiesFreeShipping ? 0 : Math.round(shippingFeeUsd * 100);
-    let totalCents = subtotalCents + shippingCents;
+    const countryCode =
+      (shipping_address?.country && String(shipping_address.country).trim()) ||
+      (typeof country_code === "string" && country_code.trim()) ||
+      "US";
+    const shippingResult = computeShipping({
+      countryCode,
+      subtotalCents,
+      totalQuantity,
+      domesticFeeUsd: Number(settings.shipping_fee_usd) ?? 5,
+      internationalFeeUsd: Number(settings.international_shipping_usd) ?? 35,
+    });
+    let totalCents = subtotalCents + shippingResult.shippingCents;
 
     let discountCents = 0;
     let couponLabel: string | null = null;
@@ -112,7 +124,8 @@ export async function POST(request: NextRequest) {
         shipping: JSON.stringify(shipping_address || {}),
         items: JSON.stringify(lineItemsForOrder),
         subtotal_usd: (subtotalCents / 100).toFixed(2),
-        shipping_usd: (shippingCents / 100).toFixed(2),
+        shipping_usd: shippingResult.shippingUsd.toFixed(2),
+        shipping_international: String(shippingResult.isInternational),
         discount_usd: (discountCents / 100).toFixed(2),
       },
     });
@@ -120,7 +133,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       subtotal: subtotalCents / 100,
-      shipping: shippingCents / 100,
+      shipping: shippingResult.shippingUsd,
+      isInternational: shippingResult.isInternational,
       discount: discountCents / 100,
       total: totalCents / 100,
       couponApplied: !!couponLabel,

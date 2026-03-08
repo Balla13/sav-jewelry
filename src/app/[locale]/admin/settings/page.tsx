@@ -14,6 +14,7 @@ export default function AdminSettingsPage() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [shippingFeeUsd, setShippingFeeUsd] = useState("5");
+  const [internationalShippingUsd, setInternationalShippingUsd] = useState("35");
   const [siteLogoUrl, setSiteLogoUrl] = useState<string | null>(null);
   const [siteIconUrl, setSiteIconUrl] = useState<string | null>(null);
   const [heroDesktopUrl, setHeroDesktopUrl] = useState<string | null>(null);
@@ -60,6 +61,9 @@ export default function AdminSettingsPage() {
         setContactEmail(data?.contact_email || "");
         setContactPhone(data?.contact_phone || "");
         setShippingFeeUsd(data?.shipping_fee_usd != null ? String(data.shipping_fee_usd) : "5");
+        setInternationalShippingUsd(
+          data?.international_shipping_usd != null ? String(data.international_shipping_usd) : "35"
+        );
         setSiteLogoUrl(data?.site_logo_url || null);
         setSiteIconUrl(data?.site_icon_url || null);
         setHeroDesktopUrl(data?.home_hero_banner_desktop_url || null);
@@ -139,6 +143,7 @@ export default function AdminSettingsPage() {
     setSuccess("");
     setSaving(true);
     const fee = Math.max(0, parseFloat(shippingFeeUsd) || 0);
+    const intlFee = Math.max(0, parseFloat(internationalShippingUsd) || 35);
     const res = await fetch("/api/admin/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -149,6 +154,7 @@ export default function AdminSettingsPage() {
         contact_email: contactEmail.trim() || null,
         contact_phone: contactPhone.trim() || null,
         shipping_fee_usd: fee,
+        international_shipping_usd: intlFee,
         site_logo_url: siteLogoUrl,
         site_icon_url: siteIconUrl,
         home_hero_banner_desktop_url: heroDesktopUrl,
@@ -295,7 +301,7 @@ export default function AdminSettingsPage() {
         </p>
         <div>
           <label htmlFor="shipping_fee" className="block text-sm font-medium text-noir-700">
-            Fixed shipping (USD)
+            Domestic Shipping ($)
           </label>
           <input
             id="shipping_fee"
@@ -306,6 +312,21 @@ export default function AdminSettingsPage() {
             onChange={(e) => setShippingFeeUsd(e.target.value)}
             className="mt-1 w-full rounded-2xl border border-champagne-300 px-4 py-2.5 text-noir-900"
           />
+        </div>
+        <div>
+          <label htmlFor="international_shipping_usd" className="block text-sm font-medium text-noir-700">
+            International Shipping ($)
+          </label>
+          <input
+            id="international_shipping_usd"
+            type="number"
+            min="0"
+            step="0.01"
+            value={internationalShippingUsd}
+            onChange={(e) => setInternationalShippingUsd(e.target.value)}
+            className="mt-1 w-full rounded-2xl border border-champagne-300 px-4 py-2.5 text-noir-900"
+          />
+          <p className="mt-1 text-xs text-noir-500">Flat rate for orders outside the United States. Default: 35</p>
         </div>
 
         <h2 className="font-display text-lg font-medium text-noir-900 pt-4">Branding</h2>

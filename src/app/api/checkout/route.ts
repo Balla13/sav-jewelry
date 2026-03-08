@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/client";
 import { getSettings } from "@/lib/supabase/settings";
+import { computeShipping } from "@/lib/shipping";
 
 export async function POST(request: NextRequest) {
   const secret = process.env.STRIPE_SECRET_KEY;
@@ -58,13 +59,15 @@ export async function POST(request: NextRequest) {
       });
     });
 
+    let subtotalCents = 0;
+    let totalQuantity = 0;
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-    let needsShippingFee = false;
     for (const item of normalized) {
       const p = byId.get(item.productId);
       if (!p) continue;
-      if (!p.free_shipping) needsShippingFee = true;
       const unitAmount = Math.max(0, Math.round((Number(p.price_usd) || 0) * 100));
+      subtotalCents += unitAmount * item.quantity;
+      totalQuantity += item.quantity;
       line_items.push({
         quantity: item.quantity,
         price_data: {
@@ -81,15 +84,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No valid products in cart." }, { status: 400 });
     }
 
-    const shippingFeeUsd = Number(settings.shipping_fee_usd) || 0;
-    const shippingAmount = needsShippingFee ? Math.max(0, Math.round(shippingFeeUsd * 100)) : 0;
-    if (shippingAmount > 0) {
+    const rawCountry = shipping_address?.country;
+    const countryCode =
+      typeof rawCountry === "string" && rawCountry.trim() ? rawCountry.trim() : "US";
+    const shippingResult = computeShipping({
+      countryCode,
+      subtotalCents,
+      totalQuantity,
+      domesticFeeUsd: Number(settings.shipping_fee_usd) ?? 5,
+      internationalFeeUsd: Number(settings.international_shipping_usd) ?? 35,
+    });
+    if (shippingResult.shippingCents > 0) {
       line_items.push({
         quantity: 1,
         price_data: {
           currency: "usd",
-          unit_amount: shippingAmount,
-          product_data: { name: "Shipping" },
+          unit_amount: shippingResult.shippingCents,
+          product_data: {
+            name: shippingResult.isInternational ? "International Shipping (Flat Rate)" : "Shipping",
+          },
         },
       });
     }

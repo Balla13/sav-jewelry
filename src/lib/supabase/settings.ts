@@ -6,6 +6,8 @@ export type Settings = {
   contact_email: string | null;
   contact_phone: string | null;
   shipping_fee_usd: number;
+  /** Domestic (US) flat fee when free shipping not met. */
+  international_shipping_usd: number;
   site_logo_url: string | null;
   site_icon_url: string | null;
   home_hero_banner_desktop_url: string | null;
@@ -29,7 +31,7 @@ export async function getSettings(): Promise<Settings> {
     const { data, error } = await supabase
       .from("settings")
       .select(
-        "instagram_url, facebook_url, contact_email, contact_phone, shipping_fee_usd, site_logo_url, site_icon_url, home_hero_banner_desktop_url, home_hero_banner_mobile_url, meta_pixel_id, unique_piece_label, shipping_insured_text, order_bump_enabled, order_bump_name, order_bump_description, order_bump_price_usd, order_bump_compare_at_price_usd, order_bump_image_url"
+        "instagram_url, facebook_url, contact_email, contact_phone, shipping_fee_usd, international_shipping_usd, site_logo_url, site_icon_url, home_hero_banner_desktop_url, home_hero_banner_mobile_url, meta_pixel_id, unique_piece_label, shipping_insured_text, order_bump_enabled, order_bump_name, order_bump_description, order_bump_price_usd, order_bump_compare_at_price_usd, order_bump_image_url"
       )
       .eq("id", 1)
       .single();
@@ -40,6 +42,7 @@ export async function getSettings(): Promise<Settings> {
         contact_email: null,
         contact_phone: null,
         shipping_fee_usd: 5,
+        international_shipping_usd: 35,
         site_logo_url: null,
         site_icon_url: null,
         home_hero_banner_desktop_url: null,
@@ -56,12 +59,14 @@ export async function getSettings(): Promise<Settings> {
       };
     }
     const fee = data.shipping_fee_usd != null ? Number(data.shipping_fee_usd) : 5;
+    const intlFee = data.international_shipping_usd != null ? Number(data.international_shipping_usd) : 35;
     return {
       instagram_url: data.instagram_url ?? null,
       facebook_url: data.facebook_url ?? null,
       contact_email: data.contact_email ?? null,
       contact_phone: data.contact_phone ?? null,
       shipping_fee_usd: Number.isFinite(fee) && fee >= 0 ? fee : 5,
+      international_shipping_usd: Number.isFinite(intlFee) && intlFee >= 0 ? intlFee : 35,
       site_logo_url: data.site_logo_url ?? null,
       site_icon_url: data.site_icon_url ?? null,
       home_hero_banner_desktop_url: data.home_hero_banner_desktop_url ?? null,
@@ -90,6 +95,7 @@ export async function getSettings(): Promise<Settings> {
       contact_email: null,
       contact_phone: null,
       shipping_fee_usd: 5,
+      international_shipping_usd: 35,
       site_logo_url: null,
       site_icon_url: null,
       home_hero_banner_desktop_url: null,
@@ -118,6 +124,10 @@ export async function updateSettings(updates: Partial<Settings>): Promise<{ erro
     if (updates.shipping_fee_usd !== undefined) {
       const v = Number(updates.shipping_fee_usd);
       payload.shipping_fee_usd = Number.isFinite(v) && v >= 0 ? v : 5;
+    }
+    if (updates.international_shipping_usd !== undefined) {
+      const v = Number(updates.international_shipping_usd);
+      payload.international_shipping_usd = Number.isFinite(v) && v >= 0 ? v : 35;
     }
     if (updates.site_logo_url !== undefined) payload.site_logo_url = updates.site_logo_url || null;
     if (updates.site_icon_url !== undefined) payload.site_icon_url = updates.site_icon_url || null;

@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/client";
 import { getSettings } from "@/lib/supabase/settings";
+import { computeShipping } from "@/lib/shipping";
 
-/** POST: retorna subtotal, frete, desconto e total (sem criar PaymentIntent). */
+/** POST: returns subtotal, shipping, discount, total (no PaymentIntent). Uses country for domestic vs international. */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { items, coupon_code } = body as {
+    const { items, coupon_code, country_code } = body as {
       items: { productId: string; quantity: number }[];
       coupon_code?: string;
+      /** ISO country code (e.g. US). Default US. */
+      country_code?: string;
     };
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "items required" }, { status: 400 });
     }
 
+    const countryCode = typeof country_code === "string" ? country_code.trim() || "US" : "US";
     const supabase = createClient();
     const settings = await getSettings();
 
@@ -53,10 +57,14 @@ export async function POST(request: NextRequest) {
     }
     if (subtotalCents <= 0) return NextResponse.json({ error: "No valid products" }, { status: 400 });
 
-    const shippingFeeUsd = Number(settings.shipping_fee_usd) || 0;
-    const qualifiesFreeShipping = totalQuantity >= 2 || subtotalCents >= 29900;
-    const shippingCents = qualifiesFreeShipping ? 0 : Math.round(shippingFeeUsd * 100);
-    let totalCents = subtotalCents + shippingCents;
+    const shippingResult = computeShipping({
+      countryCode,
+      subtotalCents,
+      totalQuantity,
+      domesticFeeUsd: Number(settings.shipping_fee_usd) ?? 5,
+      internationalFeeUsd: Number(settings.international_shipping_usd) ?? 35,
+    });
+    let totalCents = subtotalCents + shippingResult.shippingCents;
 
     let discountCents = 0;
     let couponApplied = false;
@@ -81,7 +89,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       subtotal: subtotalCents / 100,
-      shipping: shippingCents / 100,
+      shipping: shippingResult.shippingUsd,
+      shippingCents: shippingResult.shippingCents,
+      isInternational: shippingResult.isInternational,
+      isFreeShipping: shippingResult.isFreeShipping,
       discount: discountCents / 100,
       total: totalCents / 100,
       couponApplied,

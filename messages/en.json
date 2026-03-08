@@ -2,6 +2,7 @@
   "nav": {
     "home": "Home",
     "collection": "Collection",
+    "blog": "Blog",
     "about": "About",
     "contact": "Contact",
     "language": "Language",
@@ -165,11 +166,14 @@
     "firstName": "First Name",
     "lastName": "Last Name",
     "name": "Full Name",
+    "country": "Country",
     "address": "Street Address",
     "city": "City",
     "state": "State",
     "zipCodeStart": "Start with your Zip Code to auto-fill City & State",
     "standardShipping": "Standard Insured Shipping",
+    "internationalShippingLabel": "International Shipping (Flat Rate)",
+    "internationalShippingMessage": "International Flat Rate Shipping: {amount} worldwide",
     "total": "Total",
     "payNow": "Pay Now",
     "backToCollection": "Back to collection"
@@ -197,6 +201,14 @@
       "p2": "To initiate a return, contact us at contact@savjewelry.com with your order number. We will provide return instructions. Refunds are processed within 5–10 business days after we receive and inspect the item.",
       "p3": "Custom or personalized pieces, and items marked final sale, are non-refundable. This policy applies to purchases made in Florida and all U.S. and international orders, subject to applicable law."
     }
+  },
+  "blog": {
+    "title": "Journal",
+    "subtitle": "Essays on vintage jewelry, craftsmanship, and timeless style.",
+    "latestTitle": "Latest from the Blog",
+    "readMore": "Read more",
+    "viewAllPosts": "View All Posts",
+    "backToBlog": "Back to Journal"
   },
   "reviews": {
     "title": "Customer Reviews",

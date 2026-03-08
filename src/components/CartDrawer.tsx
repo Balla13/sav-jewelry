@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import { X, Minus, Plus, ShoppingBag, Plane } from "lucide-react";
@@ -9,9 +9,12 @@ import { useCartStore } from "@/store/cart-store";
 import { getProductById, formatPrice } from "@/data/products";
 import type { Product } from "@/data/products";
 import { useRef, useEffect, useState } from "react";
+import { computeShipping, isDomestic } from "@/lib/shipping";
 
 export default function CartDrawer() {
   const t = useTranslations("cart");
+  const tCheckout = useTranslations("checkout");
+  const locale = useLocale();
   const isOpen = useCartStore((s) => s.isOpen);
   const closeCart = useCartStore((s) => s.closeCart);
   const items = useCartStore((s) => s.items);
@@ -19,6 +22,22 @@ export default function CartDrawer() {
   const removeItem = useCartStore((s) => s.removeItem);
   const drawerRef = useRef<HTMLDivElement>(null);
   const [zipCode, setZipCode] = useState("");
+  const [domesticFeeUsd, setDomesticFeeUsd] = useState(5);
+  const [internationalFeeUsd, setInternationalFeeUsd] = useState(35);
+  const shippingCountry = useCartStore((s) => s.shippingCountry);
+  const setShippingCountry = useCartStore((s) => s.setShippingCountry);
+
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data?.shipping_fee_usd === "number" && data.shipping_fee_usd >= 0)
+          setDomesticFeeUsd(data.shipping_fee_usd);
+        if (typeof data?.international_shipping_usd === "number" && data.international_shipping_usd >= 0)
+          setInternationalFeeUsd(data.international_shipping_usd);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -51,8 +70,17 @@ export default function CartDrawer() {
     })
     .filter(Boolean) as { product: Product; quantity: number }[];
 
-  const total = lineItems.reduce((acc, { product, quantity }) => acc + product.priceUsd * quantity, 0);
+  const subtotal = lineItems.reduce((acc, { product, quantity }) => acc + product.priceUsd * quantity, 0);
   const totalQuantity = lineItems.reduce((acc, { quantity }) => acc + quantity, 0);
+  const countryCode = (shippingCountry || "US").trim().toUpperCase();
+  const cartShippingResult = computeShipping({
+    countryCode,
+    subtotalCents: Math.round(subtotal * 100),
+    totalQuantity,
+    domesticFeeUsd,
+    internationalFeeUsd,
+  });
+  const total = subtotal + cartShippingResult.shippingUsd;
 
   if (!isOpen) return null;
 
@@ -163,6 +191,24 @@ export default function CartDrawer() {
         {lineItems.length > 0 && (
           <div className="border-t border-champagne-200 px-4 py-4 sm:px-6 space-y-4">
             <div>
+              <label htmlFor="cart-country" className="mb-1 block text-sm font-medium text-noir-700">
+                {locale === "es" ? "País" : "Country"}
+              </label>
+              <select
+                id="cart-country"
+                value={["US", "CA", "GB", "MX", "BR", "OTHER"].includes(countryCode) ? countryCode : "OTHER"}
+                onChange={(e) => setShippingCountry(e.target.value)}
+                className="w-full rounded-2xl border border-champagne-300 bg-white px-4 py-2.5 text-noir-900 focus:border-noir-900 focus:outline-none focus:ring-1 focus:ring-noir-900"
+              >
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="GB">United Kingdom</option>
+                <option value="MX">Mexico</option>
+                <option value="BR">Brazil</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div>
               <label htmlFor="cart-zip" className="mb-1 block text-sm font-medium text-noir-700">
                 {t("zipCode")}
               </label>
@@ -177,7 +223,7 @@ export default function CartDrawer() {
               />
             </div>
             <AnimatePresence initial={false}>
-              {zipCode.trim().length >= 5 && (
+              {zipCode.trim().length >= 5 && isDomestic(countryCode) && (
                 <motion.p
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
@@ -190,9 +236,32 @@ export default function CartDrawer() {
                 </motion.p>
               )}
             </AnimatePresence>
-            <FreeShippingProgress total={total} totalQuantity={totalQuantity} />
-            <div className="flex items-center justify-between text-base font-medium text-noir-900">
+            {isDomestic(countryCode) && (
+              <FreeShippingProgress total={subtotal} totalQuantity={totalQuantity} />
+            )}
+            {!isDomestic(countryCode) && (
+              <p className="text-xs text-noir-600">
+                {locale === "es"
+                  ? `Envío internacional (tarifa fija): ${formatPrice(cartShippingResult.shippingUsd)}`
+                  : `International Shipping (Flat Rate): ${formatPrice(cartShippingResult.shippingUsd)}`}
+              </p>
+            )}
+            <div className="flex items-center justify-between text-sm text-noir-600">
               <span>{t("subtotal")}</span>
+              <span>{formatPrice(subtotal)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-noir-600">
+              <span>
+                {cartShippingResult.isInternational
+                  ? tCheckout("internationalShippingLabel")
+                  : "Shipping"}
+              </span>
+              <span>
+                {cartShippingResult.isFreeShipping ? t("free") : formatPrice(cartShippingResult.shippingUsd)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-base font-medium text-noir-900">
+              <span>{tCheckout("total")}</span>
               <span>{formatPrice(total)}</span>
             </div>
             <Link

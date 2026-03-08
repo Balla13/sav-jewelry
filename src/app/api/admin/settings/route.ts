@@ -33,6 +33,7 @@ export async function PATCH(request: NextRequest) {
       contact_email,
       contact_phone,
       shipping_fee_usd,
+      international_shipping_usd,
       site_logo_url,
       site_icon_url,
       home_hero_banner_desktop_url,
@@ -52,6 +53,7 @@ export async function PATCH(request: NextRequest) {
       contact_email?: string | null;
       contact_phone?: string | null;
       shipping_fee_usd?: number;
+      international_shipping_usd?: number;
       site_logo_url?: string | null;
       site_icon_url?: string | null;
       home_hero_banner_desktop_url?: string | null;
@@ -72,6 +74,9 @@ export async function PATCH(request: NextRequest) {
       ...(contact_email !== undefined && { contact_email: contact_email || null }),
       ...(contact_phone !== undefined && { contact_phone: contact_phone || null }),
       ...(shipping_fee_usd !== undefined && { shipping_fee_usd: Number(shipping_fee_usd) }),
+      ...(international_shipping_usd !== undefined && {
+        international_shipping_usd: Number(international_shipping_usd),
+      }),
       ...(site_logo_url !== undefined && { site_logo_url: site_logo_url || null }),
       ...(site_icon_url !== undefined && { site_icon_url: site_icon_url || null }),
       ...(home_hero_banner_desktop_url !== undefined && { home_hero_banner_desktop_url: home_hero_banner_desktop_url || null }),

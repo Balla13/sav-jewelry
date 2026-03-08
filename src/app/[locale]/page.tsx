@@ -2,6 +2,8 @@ import { setRequestLocale } from "next-intl/server";
 import { getProductsFromFile } from "@/lib/products-server";
 import Hero from "@/components/Hero";
 import FeaturedCollection from "@/components/FeaturedCollection";
+import LatestFromBlog from "@/components/LatestFromBlog";
+import type { Locale } from "@/data/blog-types";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -21,6 +23,7 @@ export default async function HomePage({ params }: Props) {
     <>
       <Hero />
       <FeaturedCollection products={featured} />
+      <LatestFromBlog locale={locale as Locale} />
     </>
   );
 }
