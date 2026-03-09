@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { getSettings } from "@/lib/supabase/settings";
 import Navbar from "@/components/Navbar";
+import GoogleReviewStrip from "@/components/GoogleReviewStrip";
 import CartDrawer from "@/components/CartDrawer";
 import UrgencyBanner from "@/components/UrgencyBanner";
 import Footer from "@/components/Footer";
@@ -36,6 +37,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <Navbar />
       <MetaPixel pixelId={pixelId} />
       <main className="flex min-h-screen flex-col">{children}</main>
+      <GoogleReviewStrip />
       <Footer />
       <CartDrawer />
       <ExitIntentPopup />
