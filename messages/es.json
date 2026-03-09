@@ -219,5 +219,11 @@
     "review2": "Calidad excepcional y diseño atemporal. Exactamente como se describe. Compraré de nuevo.",
     "reviewer3": "Sophie R.",
     "review3": "Una verdadera pieza de inversión. El cuidado al detalle es notable. Muy recomendable."
+  },
+  "googleReviewStrip": {
+    "label": "Google Reviews",
+    "rating": "5.0 ★★★★★",
+    "cta": "Mira el perfil de SÁV Jewelry en Google y las opiniones de clientes reales.",
+    "alt": "Fachada de la tienda SÁV Jewelry"
   }
 }

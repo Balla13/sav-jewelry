@@ -1,11 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import fachadaStorefront from "../../fachada da loja.png";
 
 const GOOGLE_REVIEW_URL = "https://share.google/5hvlkQThZHbBKKCY6";
 
 export default function GoogleReviewStrip() {
+  const t = useTranslations("googleReviewStrip");
+
   return (
     <section className="border-t border-noir-900/5 bg-white">
       <div className="mx-auto flex max-w-7xl items-center justify-center px-6 py-10 sm:px-8 lg:px-12">
@@ -18,7 +21,7 @@ export default function GoogleReviewStrip() {
           <div className="relative h-16 w-28 overflow-hidden rounded-xl bg-noir-900/5 sm:h-20 sm:w-36">
             <Image
               src={fachadaStorefront}
-              alt="SÁV Jewelry storefront"
+              alt={t("alt")}
               fill
               className="object-cover object-center"
               sizes="144px"
@@ -26,13 +29,13 @@ export default function GoogleReviewStrip() {
           </div>
           <div className="flex flex-1 flex-col">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-noir-500">
-              Google Reviews
+              {t("label")}
             </p>
             <p className="mt-1 text-sm font-semibold text-noir-900">
-              5.0 ★★★★★
+              {t("rating")}
             </p>
             <p className="mt-0.5 text-xs text-noir-600">
-              Veja o perfil da SÁV Jewelry no Google e as avaliações de clientes reais.
+              {t("cta")}
             </p>
           </div>
         </a>
