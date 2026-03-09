@@ -89,12 +89,13 @@ export async function sendAbandonedCartEmail(params: {
   const { to, items, locale = "en" } = params;
   const t = abandonedTemplates[locale];
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://localhost:3000";
+  const pathLocale = locale === "es" ? "es" : "en";
   const rows = items.map((i) => `${i.name} × ${i.quantity}: ${formatUsd(i.priceUsd * i.quantity)}`).join("<br/>");
   const html = `
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
       <p>${t.greeting}</p>
       <p>${rows}</p>
-      <p><a href="${siteUrl}/collection" style="display: inline-block; background: #1a1a1a; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 9999px;">${t.cta}</a></p>
+      <p><a href="${siteUrl}/${pathLocale}/collection" style="display: inline-block; background: #1a1a1a; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 9999px;">${t.cta}</a></p>
       <p style="margin-top: 2rem; color: #666;">${t.footer}</p>
     </div>
   `;
