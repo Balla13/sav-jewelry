@@ -17,6 +17,169 @@ export type SyncResult = {
   errors: string[];
 };
 
+function getEbayBaseUrl(): string {
+  const env = (process.env.EBAY_ENVIRONMENT || "production").toLowerCase();
+  return env === "sandbox" ? "https://api.sandbox.ebay.com" : "https://api.ebay.com";
+}
+
+function isEbayConfigured(): boolean {
+  return !!(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET);
+}
+
+let cachedToken: { accessToken: string; expiresAtMs: number } | null = null;
+
+async function getEbayAccessToken(): Promise<string> {
+  const clientId = process.env.EBAY_CLIENT_ID;
+  const clientSecret = process.env.EBAY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) throw new Error("Missing EBAY_CLIENT_ID or EBAY_CLIENT_SECRET");
+
+  if (cachedToken && Date.now() < cachedToken.expiresAtMs - 30_000) {
+    return cachedToken.accessToken;
+  }
+
+  const baseUrl = getEbayBaseUrl();
+  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const body = new URLSearchParams({
+    grant_type: "client_credentials",
+    scope: "https://api.ebay.com/oauth/api_scope/sell.inventory",
+  }).toString();
+
+  // eslint-disable-next-line no-console
+  console.log("[ebay] fetching OAuth token", { environment: process.env.EBAY_ENVIRONMENT || "production" });
+
+  const res = await fetch(`${baseUrl}/identity/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basic}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+
+  const json = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    expires_in?: number;
+    error?: string;
+    error_description?: string;
+  };
+
+  if (!res.ok || !json.access_token) {
+    throw new Error(`eBay OAuth failed: ${json.error || res.status} ${json.error_description || ""}`.trim());
+  }
+
+  const expiresIn = Number(json.expires_in || 0);
+  cachedToken = {
+    accessToken: json.access_token,
+    expiresAtMs: Date.now() + Math.max(60, expiresIn) * 1000,
+  };
+  return json.access_token;
+}
+
+type EbayInventoryItem = {
+  sku: string;
+  product?: {
+    title?: string;
+    description?: string;
+    imageUrls?: string[];
+  };
+  availability?: {
+    shipToLocationAvailability?: {
+      quantity?: number;
+    };
+  };
+};
+
+async function ebayRequest<T>(path: string): Promise<T> {
+  const token = await getEbayAccessToken();
+  const baseUrl = getEbayBaseUrl();
+  const res = await fetch(`${baseUrl}${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    },
+  });
+
+  const text = await res.text();
+  const json = (text ? JSON.parse(text) : {}) as T & { errors?: { message?: string }[] };
+
+  if (!res.ok) {
+    const msg =
+      (json as any)?.errors?.[0]?.message ||
+      (json as any)?.message ||
+      `${res.status} ${res.statusText}`;
+    throw new Error(`eBay API error: ${msg}`);
+  }
+
+  return json as T;
+}
+
+async function fetchOfferPriceBySku(sku: string): Promise<number | null> {
+  // Best-effort: price often lives on offers, not inventory items.
+  type Offer = { pricingSummary?: { price?: { value?: string | number } } };
+  type OfferSearch = { offers?: Offer[] };
+
+  try {
+    const data = await ebayRequest<OfferSearch>(`/sell/inventory/v1/offer?sku=${encodeURIComponent(sku)}&limit=1`);
+    const value = (data.offers?.[0] as any)?.pricingSummary?.price?.value;
+    const n = typeof value === "string" ? Number(value) : typeof value === "number" ? value : NaN;
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchEbayProducts(): Promise<EbayProduct[]> {
+  if (!isEbayConfigured()) return [];
+
+  const products: EbayProduct[] = [];
+  let offset = 0;
+  const limit = 50;
+
+  // eslint-disable-next-line no-console
+  console.log("[ebay] fetching inventory items", { limit });
+
+  while (true) {
+    type InventoryList = { inventoryItems?: { sku: string }[]; total?: number };
+    const list = await ebayRequest<InventoryList>(
+      `/sell/inventory/v1/inventory_item?limit=${limit}&offset=${offset}`
+    );
+    const skus = (list.inventoryItems || []).map((i) => i.sku).filter(Boolean);
+    if (skus.length === 0) break;
+
+    // Fetch full item details per sku (keeps code simple and robust).
+    for (const sku of skus) {
+      const item = await ebayRequest<EbayInventoryItem>(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`);
+      const title = item.product?.title?.trim() || sku;
+      const description = item.product?.description || "";
+      const images = Array.isArray(item.product?.imageUrls) ? item.product!.imageUrls!.filter(Boolean) : [];
+      const quantity = Math.max(
+        0,
+        Math.floor(Number(item.availability?.shipToLocationAvailability?.quantity ?? 0) || 0)
+      );
+      const offerPrice = await fetchOfferPriceBySku(sku);
+
+      products.push({
+        title,
+        description,
+        images,
+        sku,
+        quantity,
+        price: offerPrice ?? 0,
+        source_id: sku,
+      });
+    }
+
+    offset += skus.length;
+    if (skus.length < limit) break;
+    if (typeof list.total === "number" && offset >= list.total) break;
+  }
+
+  // eslint-disable-next-line no-console
+  console.log("[ebay] fetched products", { count: products.length });
+  return products;
+}
+
 export async function fetchMockEbayProducts(): Promise<EbayProduct[]> {
   return [
     {
@@ -60,7 +223,7 @@ function toDbProduct(p: EbayProduct) {
   };
 }
 
-export async function syncMockEbayProducts(params?: { dryRun?: boolean }): Promise<SyncResult> {
+export async function syncEbayProducts(params?: { dryRun?: boolean }): Promise<SyncResult> {
   const dryRun = params?.dryRun === true;
   const result: SyncResult = { inserted: 0, updated: 0, sold: 0, errors: [] };
 
@@ -69,7 +232,16 @@ export async function syncMockEbayProducts(params?: { dryRun?: boolean }): Promi
     return { ...result, errors: ["SUPABASE_SERVICE_ROLE_KEY not set"] };
   }
 
-  const products = await fetchMockEbayProducts();
+  let products: EbayProduct[] = [];
+  try {
+    products = isEbayConfigured() ? await fetchEbayProducts() : await fetchMockEbayProducts();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Failed to fetch from eBay";
+    result.errors.push(msg);
+    // eslint-disable-next-line no-console
+    console.error("[sync-ebay] fetch failed", msg);
+    return result;
+  }
   if (!products.length) return result;
 
   for (const p of products) {
@@ -82,7 +254,18 @@ export async function syncMockEbayProducts(params?: { dryRun?: boolean }): Promi
 
       if (dryRun) {
         // eslint-disable-next-line no-console
-        console.log("[sync-ebay][dry-run] upsert", payload.source_id, payload.sku);
+        console.log("[sync-ebay][dry-run] upsert", { source_id: payload.source_id, sku: payload.sku, qty: payload.quantity });
+        continue;
+      }
+
+      const { data: existing, error: existErr } = await supabase
+        .from("products")
+        .select("id")
+        .eq("source", "ebay")
+        .eq("source_id", payload.source_id)
+        .maybeSingle();
+      if (existErr) {
+        result.errors.push(`Lookup failed sku=${p.sku}: ${existErr.message}`);
         continue;
       }
 
@@ -90,7 +273,7 @@ export async function syncMockEbayProducts(params?: { dryRun?: boolean }): Promi
       const { data, error } = await supabase
         .from("products")
         .upsert(payload, { onConflict: "source,source_id" })
-        .select("id, quantity, stock_quantity")
+        .select("id, quantity, stock_quantity, status")
         .single();
 
       if (error) {
@@ -98,15 +281,33 @@ export async function syncMockEbayProducts(params?: { dryRun?: boolean }): Promi
         continue;
       }
 
-      // Best-effort counts: if quantity=0, treat as sold, else treat as updated.
+      const wasInsert = !existing?.id;
       const qty = Number((data as any)?.quantity ?? (data as any)?.stock_quantity ?? payload.quantity) || 0;
-      if (qty === 0) result.sold += 1;
-      else result.updated += 1;
+      const isSold = qty === 0;
+
+      if (wasInsert) {
+        result.inserted += 1;
+        // eslint-disable-next-line no-console
+        console.log("[sync-ebay] inserted", { sku: p.sku, id: (data as any)?.id, qty });
+      } else if (isSold) {
+        result.sold += 1;
+        // eslint-disable-next-line no-console
+        console.log("[sync-ebay] marked sold", { sku: p.sku, id: (data as any)?.id });
+      } else {
+        result.updated += 1;
+        // eslint-disable-next-line no-console
+        console.log("[sync-ebay] updated", { sku: p.sku, id: (data as any)?.id, qty });
+      }
     } catch (e) {
       result.errors.push(e instanceof Error ? e.message : "Unknown sync error");
     }
   }
 
   return result;
+}
+
+// Backwards compatibility (older imports)
+export async function syncMockEbayProducts(params?: { dryRun?: boolean }): Promise<SyncResult> {
+  return syncEbayProducts(params);
 }
 
