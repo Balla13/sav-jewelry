@@ -1,6 +1,7 @@
 import { createClient } from "./client";
 import type { Product } from "@/data/products";
 import type { ProductCategory } from "@/data/products";
+import { unstable_noStore as noStore } from "next/cache";
 
 export type ProductRow = {
   id: string;
@@ -37,6 +38,7 @@ function rowToProduct(row: ProductRow): Product {
 
 export async function getProductsFromSupabase(): Promise<Product[]> {
   try {
+    noStore();
     const supabase = createClient();
     const { data, error } = await supabase
       .from("products")
@@ -53,6 +55,7 @@ export async function getProductsFromSupabase(): Promise<Product[]> {
 
 export async function getProductByIdFromSupabase(id: string): Promise<Product | undefined> {
   try {
+    noStore();
     const supabase = createClient();
     const { data, error } = await supabase
       .from("products")
