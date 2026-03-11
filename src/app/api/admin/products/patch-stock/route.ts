@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createServerAdminClient } from "@/lib/supabase/server-admin";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Ipaper123!";
@@ -28,6 +29,12 @@ export async function PATCH(request: NextRequest) {
       .update({ stock_quantity: Math.floor(stock_quantity), updated_at: new Date().toISOString() })
       .eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    revalidatePath("/en");
+    revalidatePath("/es");
+    revalidatePath("/en/collection");
+    revalidatePath("/es/collection");
+    revalidatePath(`/en/product/${id}`);
+    revalidatePath(`/es/product/${id}`);
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: "Failed to update stock" }, { status: 500 });

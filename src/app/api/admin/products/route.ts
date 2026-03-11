@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import type { Product } from "@/data/products";
 import { getProductsFromSupabase } from "@/lib/supabase/products";
 import {
@@ -85,6 +86,10 @@ export async function POST(request: NextRequest) {
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
+    revalidatePath("/en");
+    revalidatePath("/es");
+    revalidatePath("/en/collection");
+    revalidatePath("/es/collection");
     return NextResponse.json({ success: true, id: result.id });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to add product";
@@ -130,6 +135,12 @@ export async function PATCH(request: NextRequest) {
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
+    revalidatePath("/en");
+    revalidatePath("/es");
+    revalidatePath("/en/collection");
+    revalidatePath("/es/collection");
+    revalidatePath(`/en/product/${id}`);
+    revalidatePath(`/es/product/${id}`);
     return NextResponse.json({ success: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update product";
@@ -150,5 +161,11 @@ export async function DELETE(request: NextRequest) {
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
+  revalidatePath("/en");
+  revalidatePath("/es");
+  revalidatePath("/en/collection");
+  revalidatePath("/es/collection");
+  revalidatePath(`/en/product/${id}`);
+  revalidatePath(`/es/product/${id}`);
   return NextResponse.json({ success: true });
 }
