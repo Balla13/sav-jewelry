@@ -21,35 +21,39 @@ export default function Hero() {
       .catch(() => {});
   }, []);
 
-  const mobileSrc = bannerMobile || "/banner-mobile.png";
-  const desktopSrc = bannerDesktop || "/banner-desktop.png";
+  const mobileSrc = bannerMobile || null;
+  const desktopSrc = bannerDesktop || null;
 
   return (
     <section className="relative h-[70vh] min-h-[420px] w-full overflow-hidden bg-white">
       {/* Banner mobile: até lg */}
-      <div className="absolute inset-0 lg:hidden">
-        <Image
-          src={mobileSrc}
-          alt=""
-          fill
-          className="object-cover object-center"
-          sizes="100vw"
-          priority
-          unoptimized={!!bannerMobile}
-        />
-      </div>
+      {mobileSrc && (
+        <div className="absolute inset-0 lg:hidden">
+          <Image
+            src={mobileSrc}
+            alt=""
+            fill
+            className="object-cover object-center"
+            sizes="100vw"
+            priority
+            unoptimized
+          />
+        </div>
+      )}
       {/* Banner desktop: lg em diante */}
-      <div className="absolute inset-0 hidden lg:block">
-        <Image
-          src={desktopSrc}
-          alt=""
-          fill
-          className="object-cover object-center"
-          sizes="100vw"
-          priority
-          unoptimized={!!bannerDesktop}
-        />
-      </div>
+      {desktopSrc && (
+        <div className="absolute inset-0 hidden lg:block">
+          <Image
+            src={desktopSrc}
+            alt=""
+            fill
+            className="object-cover object-center"
+            sizes="100vw"
+            priority
+            unoptimized
+          />
+        </div>
+      )}
       <div className="absolute inset-0 bg-gradient-to-r from-white/85 via-white/40 to-transparent" aria-hidden />
       <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-10 lg:px-20">
         <p className="text-label font-medium uppercase tracking-widest text-gold">

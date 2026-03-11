@@ -87,14 +87,7 @@ export default function Navbar() {
               />
             </div>
           ) : (
-            <Image
-              src="/logo.png"
-              alt={t("brandName")}
-              width={160}
-              height={48}
-              className="h-10 w-auto shrink-0 sm:h-12"
-              priority
-            />
+            <div className="h-10 w-40 shrink-0 sm:h-12 sm:w-48" aria-hidden />
           )}
           <span className="hidden sm:inline">{t("brandName")}</span>
         </Link>
