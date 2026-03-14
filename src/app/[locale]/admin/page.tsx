@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import AdminNav from "@/components/AdminNav";
 import type { Product } from "@/data/products";
 import { PRODUCT_CATEGORIES } from "@/data/products";
 
@@ -242,44 +243,7 @@ function AdminPageContent() {
     <div className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-2xl font-semibold text-noir-900">{editingId ? t("editProduct") : t("addProduct")}</h1>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/dashboard"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/admin/inventory"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            {t("inventory")}
-          </Link>
-          <Link
-            href="/admin/order-bump"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Order bump
-          </Link>
-          <Link
-            href="/admin/settings"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Settings
-          </Link>
-          <Link
-            href="/admin/contacts"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Contacts
-          </Link>
-          <Link
-            href="/collection"
-            className="text-sm font-medium text-noir-600 hover:text-noir-900"
-          >
-            {t("backToStore")}
-          </Link>
-        </div>
+        <AdminNav />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

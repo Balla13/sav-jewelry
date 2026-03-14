@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
+import AdminNav from "@/components/AdminNav";
 import { RefreshCw, CheckCircle, XCircle, Loader2, Link2, Trash2 } from "lucide-react";
 
 type Status = {
@@ -171,23 +172,7 @@ export default function AdminEbaySyncPage() {
     <div className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-2xl font-semibold text-noir-900">eBay Sync</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/admin/dashboard"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/admin/inventory"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Inventory
-          </Link>
-          <Link href="/collection" className="text-sm font-medium text-noir-600 hover:text-noir-900">
-            Back to store
-          </Link>
-        </div>
+        <AdminNav />
       </div>
 
       {flash === "success" && (

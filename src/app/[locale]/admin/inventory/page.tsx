@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import AdminNav from "@/components/AdminNav";
 import type { Product } from "@/data/products";
 
 export default function AdminInventoryPage() {
@@ -50,41 +51,7 @@ export default function AdminInventoryPage() {
     <div className="mx-auto max-w-5xl px-4 py-12">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-2xl font-semibold text-noir-900">{t("inventory")}</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/admin/dashboard"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/admin"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            {t("addProduct")}
-          </Link>
-          <Link
-            href="/admin/settings"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Settings
-          </Link>
-          <Link
-            href="/admin/order-bump"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Order bump
-          </Link>
-          <Link
-            href="/admin/ebay-sync"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            eBay Sync
-          </Link>
-          <Link href="/collection" className="text-sm font-medium text-noir-600 hover:text-noir-900">
-            {t("backToStore")}
-          </Link>
-        </div>
+        <AdminNav />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-noir-900/10 bg-section">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import AdminNav from "@/components/AdminNav";
 import { resolveOrderBumpImageSrc } from "@/lib/order-bump-image";
 
 export default function AdminOrderBumpPage() {
@@ -76,32 +77,7 @@ export default function AdminOrderBumpPage() {
     <div className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-2xl font-semibold text-noir-900">Order bump</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/admin/dashboard"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/admin/inventory"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Inventory
-          </Link>
-          <Link
-            href="/admin/contacts"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Contacts
-          </Link>
-          <Link
-            href="/admin/settings"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Settings
-          </Link>
-        </div>
+        <AdminNav />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-noir-900/10 bg-section p-6">

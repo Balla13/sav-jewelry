@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import AdminNav from "@/components/AdminNav";
 import { ShoppingCart, Mail, Loader2 } from "lucide-react";
 
 type AbandonedCart = {
@@ -93,17 +94,7 @@ export default function AdminAbandonedCartsPage() {
     <div className="mx-auto max-w-5xl px-4 py-12">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-2xl font-semibold text-noir-900">Abandoned carts</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/admin/dashboard"
-            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
-          >
-            Dashboard
-          </Link>
-          <Link href="/collection" className="text-sm font-medium text-noir-600 hover:text-noir-900">
-            Back to store
-          </Link>
-        </div>
+        <AdminNav />
       </div>
 
       <p className="mb-6 text-sm text-noir-600">
