@@ -23,6 +23,7 @@ type SyncResult = {
   updated?: number;
   sold?: number;
   errors?: string[];
+  message?: string;
 };
 
 export default function AdminEbaySyncPage() {
@@ -224,9 +225,14 @@ export default function AdminEbaySyncPage() {
               {result.ok ? "Sync completed" : "Sync completed with errors"}
             </p>
             {result.ok && (
-              <p className="mt-2 text-sm text-noir-600">
-                Inserted: {result.inserted ?? 0} · Updated: {result.updated ?? 0} · Marked sold: {result.sold ?? 0}
-              </p>
+              <>
+                <p className="mt-2 text-sm text-noir-600">
+                  Inserted: {result.inserted ?? 0} · Updated: {result.updated ?? 0} · Marked sold: {result.sold ?? 0}
+                </p>
+                {result.message && (
+                  <p className="mt-2 text-sm text-noir-500">{result.message}</p>
+                )}
+              </>
             )}
             {result.errors && result.errors.length > 0 && (
               <ul className="mt-2 list-inside list-disc text-sm text-amber-800">

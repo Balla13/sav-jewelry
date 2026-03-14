@@ -15,6 +15,8 @@ export type SyncResult = {
   updated: number;
   sold: number;
   errors: string[];
+  /** Mensagem quando não há erros mas o resultado precisa de explicação (ex.: 0 itens) */
+  message?: string;
 };
 
 function getEbayBaseUrl(): string {
@@ -298,10 +300,11 @@ function toDbProduct(p: EbayProduct) {
   const price = Number.isFinite(p.price) ? Math.max(0, Number(p.price)) : 0;
   const sourceId = (p.source_id || p.sku || "").trim();
   const sku = (p.sku || "").trim() || null;
-  const images = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
+  const allImages = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
+  const images = allImages.length > 0 ? [allImages[0]] : [];
 
   return {
-    // Existing site fields
+    // Existing site fields (só primeira imagem, título e descrição)
     name: p.title,
     description: p.description || "",
     // keep existing schema compatible: category must be valid; we set a safe default
@@ -348,7 +351,11 @@ export async function syncEbayProducts(params?: { dryRun?: boolean }): Promise<S
     console.error("[sync-ebay] fetch failed", msg);
     return result;
   }
-  if (!products.length) return result;
+  if (!products.length) {
+    result.message =
+      "Nenhum item encontrado no inventário do eBay (conta conectada). O sync usa a API de Inventário do eBay — só aparecem itens criados no modelo Single SKU / Seller Hub.";
+    return result;
+  }
 
   for (const p of products) {
     try {
