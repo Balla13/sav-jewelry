@@ -1,4 +1,5 @@
 import { createServerAdminClient } from "@/lib/supabase/server-admin";
+import { XMLParser } from "fast-xml-parser";
 
 export type EbayProduct = {
   title: string;
@@ -230,6 +231,82 @@ async function fetchOfferPriceBySku(sku: string): Promise<number | null> {
   }
 }
 
+/** Fallback: lista anúncios ativos via Trading API (GetMyeBaySelling) — pega itens criados pelo fluxo clássico. */
+async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
+  const token = await getEbayAccessToken();
+  const baseUrl = getEbayBaseUrl();
+  const url = `${baseUrl}/ws/api.dll`;
+  const xmlBody = `<?xml version="1.0" encoding="utf-8"?>
+<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <ActiveList><Include>true</Include><Pagination><EntriesPerPage>200</EntriesPerPage><PageNumber>1</PageNumber></Pagination></ActiveList>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetMyeBaySellingRequest>`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/xml; charset=utf-8",
+      "X-EBAY-API-IAF-TOKEN": token,
+      "X-EBAY-API-CALL-NAME": "GetMyeBaySelling",
+      "X-EBAY-API-SITEID": "0",
+      "X-EBAY-API-COMPATIBILITY-LEVEL": "1311",
+      "Accept-Language": "en-US",
+    },
+    body: xmlBody,
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`eBay Trading API error: ${res.status} ${text.slice(0, 200)}`);
+  }
+
+  const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
+  const parsed = parser.parse(text) as Record<string, unknown>;
+  const resp = (parsed.GetMyeBaySellingResponse ?? parsed.getMyeBaySellingResponse) as {
+    ActiveList?: { ItemArray?: { Item?: Record<string, unknown> | Record<string, unknown>[] } };
+    Errors?: { ShortMessage?: string };
+  } | undefined;
+  const activeList = resp?.ActiveList;
+  const itemArray = activeList?.ItemArray?.Item;
+  if (!itemArray) {
+    const err = resp?.Errors?.ShortMessage;
+    if (err) throw new Error(`eBay Trading API: ${err}`);
+    return [];
+  }
+
+  const items = Array.isArray(itemArray) ? itemArray : [itemArray];
+  const products: EbayProduct[] = [];
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i] as Record<string, unknown>;
+    const itemId = String(it.ItemID ?? it.itemID ?? "").trim() || `ebay-trading-${i}`;
+    const title = String(it.Title ?? "").trim() || itemId || "eBay item";
+    const desc = String(it.Description ?? "").trim();
+    const qty = Math.max(0, Math.floor(Number(it.QuantityAvailable ?? it.Quantity ?? 0) || 0));
+    const priceVal = it.BuyItNowPrice ?? it.StartPrice ?? it.CurrentPrice ?? 0;
+    const price = Number(typeof priceVal === "string" ? priceVal : priceVal) || 0;
+    const pic = it.PictureDetails as Record<string, unknown> | undefined;
+    let imgUrl = String(pic?.GalleryURL ?? "").trim();
+    if (!imgUrl && Array.isArray(pic?.PictureURL)) imgUrl = String((pic.PictureURL as string[])[0] ?? "").trim();
+    else if (!imgUrl && typeof pic?.PictureURL === "string") imgUrl = pic.PictureURL.trim();
+    const images = imgUrl ? [imgUrl] : [];
+
+    products.push({
+      title,
+      description: desc,
+      images,
+      sku: itemId,
+      quantity: qty,
+      price,
+      source_id: itemId,
+    });
+  }
+
+  // eslint-disable-next-line no-console
+  console.log("[ebay] Trading API fallback", { count: products.length });
+  return products;
+}
+
 export async function fetchEbayProducts(): Promise<EbayProduct[]> {
   if (!isEbayConfigured()) return [];
 
@@ -274,6 +351,16 @@ export async function fetchEbayProducts(): Promise<EbayProduct[]> {
     offset += skus.length;
     if (skus.length < limit) break;
     if (typeof list.total === "number" && offset >= list.total) break;
+  }
+
+  if (products.length === 0) {
+    try {
+      const fromTrading = await fetchEbayProductsFromTradingApi();
+      if (fromTrading.length > 0) return fromTrading;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[ebay] Trading API fallback failed", e);
+    }
   }
 
   // eslint-disable-next-line no-console
