@@ -177,13 +177,13 @@ export async function POST(request: NextRequest) {
       shippingAddress:
         addr || session.customer_details?.name
           ? {
-              firstName: session.customer_details?.name?.split(" ")[0],
-              lastName: session.customer_details?.name?.split(" ").slice(1).join(" "),
+              firstName: session.customer_details?.name?.split(" ")[0] ?? undefined,
+              lastName: session.customer_details?.name?.split(" ").slice(1).join(" ") || undefined,
               address: addr?.line1 ? [addr.line1, addr.line2].filter(Boolean).join(", ") : undefined,
-              city: addr?.city,
-              state: addr?.state,
-              zipCode: addr?.postal_code,
-              country: addr?.country,
+              city: addr?.city ?? undefined,
+              state: addr?.state ?? undefined,
+              zipCode: addr?.postal_code ?? undefined,
+              country: addr?.country ?? undefined,
             }
           : undefined,
     });
