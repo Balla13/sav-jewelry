@@ -296,6 +296,9 @@ async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
 
   for (let i = 0; i < items.length; i++) {
     const it = items[i] as Record<string, unknown>;
+    const listingType = String(it.ListingType ?? it.listingType ?? "").trim();
+    if (listingType === "Chinese" || listingType === "Auction") continue;
+
     const listingDetails = it.ListingDetails as Record<string, unknown> | undefined;
     const startTimeRaw = listingDetails?.StartTime ?? listingDetails?.startTime;
     const startTimeMs = startTimeRaw != null ? new Date(String(startTimeRaw)).getTime() : 0;
@@ -303,7 +306,8 @@ async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
 
     const itemId = String(it.ItemID ?? it.itemID ?? "").trim() || `ebay-trading-${i}`;
     const title = String(it.Title ?? "").trim() || itemId || "eBay item";
-    const desc = String(it.Description ?? "").trim();
+    const descRaw = it.Description ?? it.description;
+    const desc = typeof descRaw === "string" ? descRaw.trim() : (descRaw && typeof (descRaw as Record<string, unknown>)["#text"] === "string" ? String((descRaw as Record<string, string>)["#text"]).trim() : "");
     const qty = Math.max(0, Math.floor(Number(it.QuantityAvailable ?? it.Quantity ?? 0) || 0));
     const priceVal = it.BuyItNowPrice ?? it.StartPrice ?? it.CurrentPrice ?? 0;
     const price = parsePrice(priceVal);
@@ -485,13 +489,18 @@ export async function syncEbayProducts(params?: { dryRun?: boolean }): Promise<S
 
       const { data: existing, error: existErr } = await supabase
         .from("products")
-        .select("id")
+        .select("id, description")
         .eq("source", "ebay")
         .eq("source_id", payload.source_id)
         .maybeSingle();
       if (existErr) {
         result.errors.push(`Lookup failed sku=${p.sku}: ${existErr.message}`);
         continue;
+      }
+
+      const existingDesc = (existing as { description?: string } | null)?.description?.trim();
+      if (!payload.description?.trim() && existingDesc) {
+        payload.description = existingDesc;
       }
 
       // Upsert by (source, source_id)
