@@ -407,14 +407,15 @@ function toDbProduct(p: EbayProduct) {
   const sku = (p.sku || "").trim() || null;
   const allImages = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
   const images = allImages.length > 0 ? [allImages[0]] : [];
+  const compareAtPrice = price > 0 ? Math.round(price * 1.3 * 100) / 100 : null;
 
   return {
     // Existing site fields (só primeira imagem, título e descrição)
     name: p.title,
     description: p.description || "",
-    // keep existing schema compatible: category must be valid; we set a safe default
     category: "Rare Finds",
     price_usd: price,
+    compare_at_price: compareAtPrice,
     stock_quantity: qty,
     images,
 
