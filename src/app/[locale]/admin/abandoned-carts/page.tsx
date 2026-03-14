@@ -72,8 +72,9 @@ export default function AdminAbandonedCartsPage() {
         dateStyle: "short",
         timeStyle: "short",
       });
+    } catch {
+      return s;
     }
-    return s;
   };
 
   const formatAddress = (c: AbandonedCart) => {
