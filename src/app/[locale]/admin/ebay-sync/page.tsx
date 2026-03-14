@@ -26,6 +26,9 @@ type SyncResult = {
   message?: string;
   rollback?: boolean;
   deleted?: number;
+  /** Relatório de atualização só descrição / só preço */
+  skipped?: number;
+  notFound?: number;
 };
 
 export default function AdminEbaySyncPage() {
@@ -36,6 +39,8 @@ export default function AdminEbaySyncPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [rollbacking, setRollbacking] = useState(false);
+  const [updatingDesc, setUpdatingDesc] = useState(false);
+  const [updatingPrice, setUpdatingPrice] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
 
   const [flash, setFlash] = useState<"success" | "error" | "config" | null>(null);
@@ -109,6 +114,32 @@ export default function AdminEbaySyncPage() {
       .then((data) => setResult(data))
       .catch(() => setResult({ ok: false, errors: ["Rollback request failed."] }))
       .finally(() => setRollbacking(false));
+  };
+
+  const runUpdateDescriptions = () => {
+    setUpdatingDesc(true);
+    setResult(null);
+    fetch("/api/sync-ebay?update=description", {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((data) => setResult(data))
+      .catch(() => setResult({ ok: false, errors: ["Update descriptions failed."] }))
+      .finally(() => setUpdatingDesc(false));
+  };
+
+  const runUpdatePrices = () => {
+    setUpdatingPrice(true);
+    setResult(null);
+    fetch("/api/sync-ebay?update=price", {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((data) => setResult(data))
+      .catch(() => setResult({ ok: false, errors: ["Update prices failed."] }))
+      .finally(() => setUpdatingPrice(false));
   };
 
   if (loading || !status) {
@@ -243,6 +274,33 @@ export default function AdminEbaySyncPage() {
           </button>
         </div>
 
+        <hr className="border-noir-900/10" />
+
+        <h2 className="font-display text-lg font-medium text-noir-900">Update existing products only</h2>
+        <p className="text-sm text-noir-600">
+          Only updates products already in your store (from eBay). Does not add new products.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={runUpdateDescriptions}
+            disabled={!status.readyToSync || updatingDesc}
+            className="inline-flex items-center gap-2 rounded-full border border-noir-900/30 bg-white px-6 py-3 text-sm font-medium text-noir-700 transition hover:bg-noir-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {updatingDesc ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Update descriptions
+          </button>
+          <button
+            type="button"
+            onClick={runUpdatePrices}
+            disabled={!status.readyToSync || updatingPrice}
+            className="inline-flex items-center gap-2 rounded-full border border-noir-900/30 bg-white px-6 py-3 text-sm font-medium text-noir-700 transition hover:bg-noir-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {updatingPrice ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Update prices
+          </button>
+        </div>
+
         {result && (
           <div
             className={`rounded-2xl border p-4 ${
@@ -250,12 +308,17 @@ export default function AdminEbaySyncPage() {
             }`}
           >
             <p className="font-medium text-noir-900">
-              {result.ok ? "Sync completed" : "Sync completed with errors"}
+              {result.rollback ? "Rollback completed" : result.skipped !== undefined ? "Update report" : result.ok ? "Sync completed" : "Sync completed with errors"}
             </p>
             {result.ok && result.rollback && (
               <p className="mt-2 text-sm text-noir-600">Removed {result.deleted ?? 0} eBay product(s) from the store.</p>
             )}
-            {result.ok && !result.rollback && (
+            {result.ok && result.skipped !== undefined && (
+              <p className="mt-2 text-sm text-noir-600">
+                Updated: {result.updated ?? 0} · Skipped (no change): {result.skipped ?? 0} · Not found on eBay: {result.notFound ?? 0}
+              </p>
+            )}
+            {result.ok && !result.rollback && result.skipped === undefined && (
               <>
                 <p className="mt-2 text-sm text-noir-600">
                   Inserted: {result.inserted ?? 0} · Updated: {result.updated ?? 0} · Marked sold: {result.sold ?? 0}

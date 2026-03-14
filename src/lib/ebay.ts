@@ -231,6 +231,53 @@ async function fetchOfferPriceBySku(sku: string): Promise<number | null> {
   }
 }
 
+/** Busca um item no eBay por ItemID (GetItem) e retorna descrição e preço. */
+async function getEbayItemByItemId(itemId: string): Promise<{ description?: string; price?: number } | null> {
+  const token = await getEbayAccessToken();
+  const baseUrl = getEbayBaseUrl();
+  const url = `${baseUrl}/ws/api.dll`;
+  const xmlBody = `<?xml version="1.0" encoding="utf-8"?>
+<GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <ItemID>${String(itemId).replace(/[<>&"']/g, "")}</ItemID>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetItemRequest>`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/xml; charset=utf-8",
+      "X-EBAY-API-IAF-TOKEN": token,
+      "X-EBAY-API-CALL-NAME": "GetItem",
+      "X-EBAY-API-SITEID": "0",
+      "X-EBAY-API-COMPATIBILITY-LEVEL": "1311",
+      "Accept-Language": "en-US",
+    },
+    body: xmlBody,
+  });
+
+  const text = await res.text();
+  if (!res.ok) return null;
+
+  const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
+  const parsed = parser.parse(text) as Record<string, unknown>;
+  const resp = parsed.GetItemResponse ?? parsed.getItemResponse;
+  if (!resp) return null;
+  const item = (resp as Record<string, unknown>).Item as Record<string, unknown> | undefined;
+  if (!item) return null;
+
+  const descRaw = item.Description ?? item.description;
+  let description: string | undefined;
+  if (typeof descRaw === "string") description = descRaw.trim() || undefined;
+  else if (descRaw && typeof (descRaw as Record<string, unknown>)["#text"] === "string")
+    description = String((descRaw as Record<string, string>)["#text"]).trim() || undefined;
+
+  const sellingStatus = item.SellingStatus as Record<string, unknown> | undefined;
+  const priceVal = sellingStatus?.CurrentPrice ?? item.BuyItNowPrice ?? item.StartPrice ?? item.CurrentPrice;
+  const price = parsePrice(priceVal);
+
+  return { description, price: price > 0 ? price : undefined };
+}
+
 /** Converte URL de imagem eBay para versão alta res (até 1600px). */
 function ebayImageToHighRes(url: string): string {
   if (!url || typeof url !== "string") return url;
@@ -538,6 +585,116 @@ export async function syncEbayProducts(params?: { dryRun?: boolean }): Promise<S
   }
 
   return result;
+}
+
+export type UpdateOnlyReport = {
+  ok: boolean;
+  updated: number;
+  skipped: number;
+  notFound: number;
+  errors: string[];
+};
+
+/** Atualiza apenas as descrições dos produtos já cadastrados (source=ebay). Não cria produtos novos. */
+export async function updateOnlyDescriptions(): Promise<UpdateOnlyReport> {
+  const report: UpdateOnlyReport = { ok: true, updated: 0, skipped: 0, notFound: 0, errors: [] };
+  const supabase = createServerAdminClient();
+  if (!supabase) {
+    report.ok = false;
+    report.errors.push("SUPABASE_SERVICE_ROLE_KEY not set");
+    return report;
+  }
+
+  const { data: products, error: listErr } = await supabase
+    .from("products")
+    .select("id, source_id, description")
+    .eq("source", "ebay")
+    .not("source_id", "is", null);
+  if (listErr) {
+    report.ok = false;
+    report.errors.push(listErr.message);
+    return report;
+  }
+  const rows = (products || []) as { id: string; source_id: string; description: string | null }[];
+  if (rows.length === 0) return report;
+
+  for (const row of rows) {
+    const sourceId = row.source_id?.trim();
+    if (!sourceId) continue;
+    try {
+      const item = await getEbayItemByItemId(sourceId);
+      if (!item) {
+        report.notFound += 1;
+        continue;
+      }
+      if (!item.description?.trim()) {
+        report.skipped += 1;
+        continue;
+      }
+      if (row.description?.trim() === item.description.trim()) {
+        report.skipped += 1;
+        continue;
+      }
+      const { error: updErr } = await supabase.from("products").update({ description: item.description.trim() }).eq("id", row.id);
+      if (updErr) report.errors.push(`${sourceId}: ${updErr.message}`);
+      else report.updated += 1;
+    } catch (e) {
+      report.errors.push(`${sourceId}: ${e instanceof Error ? e.message : "Unknown error"}`);
+    }
+  }
+  return report;
+}
+
+/** Atualiza apenas os preços dos produtos já cadastrados (source=ebay). Não cria produtos novos. */
+export async function updateOnlyPrices(): Promise<UpdateOnlyReport> {
+  const report: UpdateOnlyReport = { ok: true, updated: 0, skipped: 0, notFound: 0, errors: [] };
+  const supabase = createServerAdminClient();
+  if (!supabase) {
+    report.ok = false;
+    report.errors.push("SUPABASE_SERVICE_ROLE_KEY not set");
+    return report;
+  }
+
+  const { data: products, error: listErr } = await supabase
+    .from("products")
+    .select("id, source_id, price_usd")
+    .eq("source", "ebay")
+    .not("source_id", "is", null);
+  if (listErr) {
+    report.ok = false;
+    report.errors.push(listErr.message);
+    return report;
+  }
+  const rows = (products || []) as { id: string; source_id: string; price_usd: number | null }[];
+  if (rows.length === 0) return report;
+
+  for (const row of rows) {
+    const sourceId = row.source_id?.trim();
+    if (!sourceId) continue;
+    try {
+      const item = await getEbayItemByItemId(sourceId);
+      if (!item || item.price == null || item.price <= 0) {
+        report.notFound += 1;
+        continue;
+      }
+      const newPrice = item.price;
+      const existingPrice = Number(row.price_usd) || 0;
+      if (existingPrice === newPrice) {
+        report.skipped += 1;
+        continue;
+      }
+      const compareAtPrice = Math.round(newPrice * 1.3 * 100) / 100;
+      const { error: updErr } = await supabase
+        .from("products")
+        .update({ price_usd: newPrice, compare_at_price: compareAtPrice })
+        .eq("id", row.id);
+      if (updErr) report.errors.push(`${sourceId}: ${updErr.message}`);
+      else report.updated += 1;
+    } catch (e) {
+      report.errors.push(`${sourceId}: ${e instanceof Error ? e.message : "Unknown error"}`);
+    }
+  }
+  return report;
 }
 
 // Backwards compatibility (older imports)
