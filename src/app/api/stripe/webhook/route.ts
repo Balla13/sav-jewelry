@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createServerAdminClient } from "@/lib/supabase/server-admin";
+import { getSettings } from "@/lib/supabase/settings";
 import { sendOrderConfirmation } from "@/lib/resend";
 
 export const dynamic = "force-dynamic";
@@ -69,14 +70,29 @@ export async function POST(request: NextRequest) {
     });
     if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
     if (email && items.length > 0) {
-      await sendOrderConfirmation({
-        to: email,
-        items,
-        subtotal: subtotalUsd,
-        shipping: shippingUsd,
-        total: totalUsd,
-        locale,
-      });
+      const settings = await getSettings();
+    const addr = shippingAddress as Record<string, unknown>;
+    const get = (a: string, b: string) => (addr?.[a] ?? addr?.[b]) as string | undefined;
+    await sendOrderConfirmation({
+      to: email,
+      items,
+      subtotal: subtotalUsd,
+      shipping: shippingUsd,
+      total: totalUsd,
+      locale,
+      logoUrl: settings.site_logo_url,
+      shippingAddress: addr && (addr.firstName ?? addr.first_name ?? addr.address ?? addr.city)
+        ? {
+            firstName: get("firstName", "first_name"),
+            lastName: get("lastName", "last_name"),
+            address: get("address", "address"),
+            city: get("city", "city"),
+            state: get("state", "state"),
+            zipCode: get("zipCode", "zip_code"),
+            country: get("country", "country"),
+          }
+        : undefined,
+    });
     }
     return NextResponse.json({ ok: true });
   }
@@ -148,6 +164,8 @@ export async function POST(request: NextRequest) {
   }
 
   if (email) {
+    const settings = await getSettings();
+    const addr = session.customer_details?.address;
     await sendOrderConfirmation({
       to: email,
       items,
@@ -155,6 +173,19 @@ export async function POST(request: NextRequest) {
       shipping: shippingUsd,
       total: totalUsd,
       locale,
+      logoUrl: settings.site_logo_url,
+      shippingAddress:
+        addr || session.customer_details?.name
+          ? {
+              firstName: session.customer_details?.name?.split(" ")[0],
+              lastName: session.customer_details?.name?.split(" ").slice(1).join(" "),
+              address: addr?.line1 ? [addr.line1, addr.line2].filter(Boolean).join(", ") : undefined,
+              city: addr?.city,
+              state: addr?.state,
+              zipCode: addr?.postal_code,
+              country: addr?.country,
+            }
+          : undefined,
     });
   }
 

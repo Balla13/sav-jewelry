@@ -64,9 +64,11 @@ export default function CheckoutShipping() {
   } | null>(null);
 
   const clearCart = useCartStore((s) => s.clearCart);
+  const addItem = useCartStore((s) => s.addItem);
   const items = useCartStore((s) => s.items);
   const shippingCountry = useCartStore((s) => s.shippingCountry);
   const setShippingCountry = useCartStore((s) => s.setShippingCountry);
+  const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
   const [includeCleaningKit, setIncludeCleaningKit] = useState(false);
   const [kitEnabled, setKitEnabled] = useState(true);
   const [kitName, setKitName] = useState("SÁV+ Jewelry Cleaning Kit");
@@ -115,6 +117,35 @@ export default function CheckoutShipping() {
     if (isSuccess) clearCart();
   }, [isSuccess, clearCart]);
 
+  const recoverId = searchParams.get("recover");
+  useEffect(() => {
+    if (!recoverId || !addItem || !clearCart) return;
+    let cancelled = false;
+    fetch(`/api/checkout/recover?id=${encodeURIComponent(recoverId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled || !data?.items?.length) return;
+        clearCart();
+        data.items.forEach(
+          (item: { productId: string; quantity: number; name: string; priceUsd: number; image?: string }) => {
+            addItem(item.productId, item.quantity, {
+              name: item.name,
+              priceUsd: item.priceUsd,
+              image: item.image || "",
+            });
+          }
+        );
+        if (data.items.some((i: { productId: string }) => i.productId === "cleaning-kit")) setIncludeCleaningKit(true);
+        const u = new URL(window.location.href);
+        u.searchParams.delete("recover");
+        window.history.replaceState({}, "", u.pathname + u.search);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [recoverId, addItem, clearCart]);
+
   useEffect(() => {
     fetch("/api/settings", { cache: "no-store" })
       .then((res) => res.json())
@@ -140,30 +171,44 @@ export default function CheckoutShipping() {
       .catch(() => {});
   }, []);
 
-  const saveCheckoutSession = (e: React.FocusEvent<HTMLInputElement>) => {
-    const value = (e.target.value || "").trim();
-    if (!value || !value.includes("@") || lineItems.length === 0) return;
-    const sessionItems = lineItems.map(({ product, quantity }) => ({
+  const sessionItemsWithProductId = () => {
+    const list = lineItems.map(({ product, quantity }) => ({
+      productId: product.id,
       name: product.name,
       quantity,
       priceUsd: product.priceUsd,
+      image: product.image || product.images?.[0],
     }));
     if (withKit) {
-      sessionItems.push({
-        name: "SÁV+ Jewelry Cleaning Kit",
+      list.push({
+        productId: "cleaning-kit",
+        name: kitName,
         quantity: 1,
         priceUsd: kitPrice,
+        image: kitImageUrl,
       });
     }
+    return list;
+  };
+
+  const saveCheckoutSession = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = (e.target.value || "").trim();
+    if (!value || !value.includes("@") || lineItems.length === 0) return;
     fetch("/api/checkout/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        id: checkoutSessionId || undefined,
         email: value,
-        items: sessionItems,
+        items: sessionItemsWithProductId(),
         locale: locale === "es" ? "es" : "en",
       }),
-    }).catch(() => {});
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.id) setCheckoutSessionId(data.id);
+      })
+      .catch(() => {});
   };
 
   // Auto-fill city, state (and street for Brazil) from postal code for supported countries
@@ -195,6 +240,30 @@ export default function CheckoutShipping() {
       return;
     }
     try {
+      await fetch("/api/checkout/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: checkoutSessionId || undefined,
+          email: email.trim() || undefined,
+          items: sessionItemsWithProductId(),
+          locale: locale === "es" ? "es" : "en",
+          first_name: firstName.trim() || undefined,
+          last_name: lastName.trim() || undefined,
+          phone: undefined,
+          address: address.trim() || undefined,
+          city: city.trim() || undefined,
+          state: state.trim() || undefined,
+          zip_code: zipCode.trim() || undefined,
+          country_code: countryCode || undefined,
+        }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d?.id) setCheckoutSessionId(d.id);
+        })
+        .catch(() => {});
+
       const res = await fetch("/api/checkout/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
