@@ -273,7 +273,15 @@ export default function CheckoutShipping() {
         {tCheckout("checkout")}
       </h1>
 
-      <form onSubmit={handlePayNow} className="mt-10 lg:mt-14">
+      {/* One wrapper only: div on payment step to avoid nested form (browser would submit outer form and reload) */}
+      {(() => {
+        const isPaymentStep = !!clientSecret;
+        const Wrapper = isPaymentStep ? "div" : "form";
+        return (
+          <Wrapper
+            className="mt-10 lg:mt-14"
+            {...(isPaymentStep ? {} : { onSubmit: handlePayNow })}
+          >
         <div className="lg:grid lg:grid-cols-2 lg:gap-16 lg:gap-x-20">
           <div className="space-y-6">
             <div>
@@ -695,7 +703,9 @@ export default function CheckoutShipping() {
             </div>
           </div>
         </div>
-      </form>
+          </Wrapper>
+        );
+      })()}
     </div>
   );
 }
