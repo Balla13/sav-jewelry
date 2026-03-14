@@ -381,6 +381,126 @@ async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
   return products;
 }
 
+/** Retorna todos os ItemIDs atualmente ativos na conta (Trading API ActiveList, sem filtro de 24h). */
+export async function getActiveEbayItemIds(): Promise<string[]> {
+  if (!isEbayConfigured()) return [];
+  try {
+    const token = await getEbayAccessToken();
+    const baseUrl = getEbayBaseUrl();
+    const url = `${baseUrl}/ws/api.dll`;
+    const xmlBody = `<?xml version="1.0" encoding="utf-8"?>
+<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <ActiveList><Include>true</Include><Pagination><EntriesPerPage>200</EntriesPerPage><PageNumber>1</PageNumber></Pagination></ActiveList>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetMyeBaySellingRequest>`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+        "X-EBAY-API-IAF-TOKEN": token,
+        "X-EBAY-API-CALL-NAME": "GetMyeBaySelling",
+        "X-EBAY-API-SITEID": "0",
+        "X-EBAY-API-COMPATIBILITY-LEVEL": "1311",
+        "Accept-Language": "en-US",
+      },
+      body: xmlBody,
+    });
+
+    const text = await res.text();
+    if (!res.ok) return [];
+
+    const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
+    const parsed = parser.parse(text) as Record<string, unknown>;
+    const resp = (parsed.GetMyeBaySellingResponse ?? parsed.getMyeBaySellingResponse) as {
+      ActiveList?: { ItemArray?: { Item?: Record<string, unknown> | Record<string, unknown>[] } };
+    } | undefined;
+    const itemArray = resp?.ActiveList?.ItemArray?.Item;
+    if (!itemArray) return [];
+
+    const items = Array.isArray(itemArray) ? itemArray : [itemArray];
+    const ids: string[] = [];
+    for (const it of items) {
+      const itemId = String((it as Record<string, unknown>).ItemID ?? (it as Record<string, unknown>).itemID ?? "").trim();
+      if (itemId) ids.push(itemId);
+    }
+    return ids;
+  } catch {
+    return [];
+  }
+}
+
+/** Retorna todos os SKUs do inventário eBay (Inventory API). */
+export async function getActiveEbaySkus(): Promise<string[]> {
+  if (!isEbayConfigured()) return [];
+  const skus: string[] = [];
+  let offset = 0;
+  const limit = 50;
+  try {
+    while (true) {
+      type InventoryList = { inventoryItems?: { sku: string }[]; total?: number };
+      const list = await ebayRequest<InventoryList>(
+        `/sell/inventory/v1/inventory_item?limit=${limit}&offset=${offset}`
+      );
+      const chunk = (list.inventoryItems || []).map((i) => i.sku).filter(Boolean);
+      skus.push(...chunk);
+      if (chunk.length === 0 || chunk.length < limit) break;
+      offset += chunk.length;
+      if (typeof list.total === "number" && offset >= list.total) break;
+    }
+  } catch {
+    // ignore
+  }
+  return skus;
+}
+
+export type RemoveUnavailableReport = {
+  removed: number;
+  errors: string[];
+};
+
+/** Remove da loja os produtos eBay cujo source_id não está mais ativo (vendidos/encerrados). */
+export async function removeUnavailableEbayProducts(): Promise<RemoveUnavailableReport> {
+  const report: RemoveUnavailableReport = { removed: 0, errors: [] };
+  const supabase = createServerAdminClient();
+  if (!supabase) {
+    report.errors.push("SUPABASE_SERVICE_ROLE_KEY not set");
+    return report;
+  }
+  if (!(await hasEbayUserToken())) {
+    report.errors.push("eBay not connected.");
+    return report;
+  }
+
+  let activeSet: Set<string>;
+  try {
+    const [itemIds, skus] = await Promise.all([getActiveEbayItemIds(), getActiveEbaySkus()]);
+    activeSet = new Set([...itemIds, ...skus]);
+  } catch (e) {
+    report.errors.push(e instanceof Error ? e.message : "Failed to fetch active eBay list");
+    return report;
+  }
+
+  const { data: rows, error: listErr } = await supabase
+    .from("products")
+    .select("id, source_id")
+    .eq("source", "ebay")
+    .not("source_id", "is", null);
+  if (listErr) {
+    report.errors.push(listErr.message);
+    return report;
+  }
+  const products = (rows || []) as { id: string; source_id: string }[];
+  for (const row of products) {
+    const sid = row.source_id?.trim();
+    if (!sid || activeSet.has(sid)) continue;
+    const { error: delErr } = await supabase.from("products").delete().eq("id", row.id);
+    if (delErr) report.errors.push(`${row.id}: ${delErr.message}`);
+    else report.removed += 1;
+  }
+  return report;
+}
+
 export async function fetchEbayProducts(): Promise<EbayProduct[]> {
   if (!isEbayConfigured()) return [];
 

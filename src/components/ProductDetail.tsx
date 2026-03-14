@@ -8,6 +8,7 @@ import { ArrowLeft, Star, ShoppingBag, Truck } from "lucide-react";
 import type { Product } from "@/data/products";
 import { formatPrice } from "@/data/products";
 import { useCartStore } from "@/store/cart-store";
+import ProductCard from "@/components/ProductCard";
 
 /** Adds N business days (skips weekends). */
 function addBusinessDays(from: Date, days: number): Date {
@@ -23,11 +24,12 @@ function addBusinessDays(from: Date, days: number): Date {
 
 type Props = {
   product: Product;
+  relatedProducts?: Product[];
   uniquePieceLabel?: string;
   shippingInsuredText?: string;
 };
 
-export default function ProductDetail({ product, uniquePieceLabel, shippingInsuredText }: Props) {
+export default function ProductDetail({ product, relatedProducts = [], uniquePieceLabel, shippingInsuredText }: Props) {
   const t = useTranslations("product");
   const tCart = useTranslations("cart");
   const tReviews = useTranslations("reviews");
@@ -180,9 +182,12 @@ export default function ProductDetail({ product, uniquePieceLabel, shippingInsur
         <div className="mt-16 border-t border-noir-900/10 pt-12 lg:grid lg:grid-cols-2 lg:gap-12">
           <section className="lg:col-start-1">
             <h2 className="font-display text-xl font-medium text-noir-900">{t("description")}</h2>
-            <p className="mt-4 text-base leading-relaxed text-noir-700">
-              {product.description}
-            </p>
+            {product.description ? (
+              <div
+                className="product-description mt-4 text-base leading-relaxed text-noir-700 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-1"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
+            ) : null}
           </section>
           <section className="mt-10 lg:col-start-2 lg:mt-0">
             <h2 className="font-display text-2xl font-light tracking-tight text-noir-900">
@@ -207,6 +212,19 @@ export default function ProductDetail({ product, uniquePieceLabel, shippingInsur
             </ul>
           </section>
         </div>
+
+        {relatedProducts.length > 0 && (
+          <section className="mt-20 border-t border-noir-900/10 pt-12">
+            <h2 className="font-display text-xl font-medium text-noir-900">{t("relatedProducts")}</h2>
+            <ul className="mt-8 grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+              {relatedProducts.map((p) => (
+                <li key={p.id} className="flex">
+                  <ProductCard product={p} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </div>
   );

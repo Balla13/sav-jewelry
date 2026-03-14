@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { syncEbayProducts, isEbayConfigured, hasEbayUserToken, isEbayOAuthReady, updateOnlyDescriptions, updateOnlyPrices } from "@/lib/ebay";
+import { syncEbayProducts, isEbayConfigured, hasEbayUserToken, isEbayOAuthReady, updateOnlyDescriptions, updateOnlyPrices, removeUnavailableEbayProducts } from "@/lib/ebay";
 import { createServerAdminClient } from "@/lib/supabase/server-admin";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
@@ -63,6 +63,11 @@ export async function POST(request: NextRequest) {
   if (updateMode === "price") {
     const report = await updateOnlyPrices();
     return NextResponse.json(report.errors.length ? { ...report, ok: false } : report);
+  }
+
+  if (request.nextUrl.searchParams.get("removeUnavailable") === "1") {
+    const report = await removeUnavailableEbayProducts();
+    return NextResponse.json(report.errors.length ? { ...report, ok: false } : { ok: true, ...report });
   }
 
   const dryRun = request.nextUrl.searchParams.get("dryRun") === "1";

@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { getProductByIdFromFile } from "@/lib/products-server";
+import { getProductByIdFromFile, getProductsFromFile } from "@/lib/products-server";
 import { getSettings } from "@/lib/supabase/settings";
 import ProductDetail from "@/components/ProductDetail";
 
@@ -12,12 +12,22 @@ export default async function ProductPage({ params }: Props) {
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const [product, settings] = await Promise.all([getProductByIdFromFile(id), getSettings()]);
+  const [product, allProducts, settings] = await Promise.all([
+    getProductByIdFromFile(id),
+    getProductsFromFile(),
+    getSettings(),
+  ]);
   if (!product) notFound();
+
+  const relatedProducts = allProducts
+    .filter((p) => p.id !== product.id)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 4);
 
   return (
     <ProductDetail
       product={product}
+      relatedProducts={relatedProducts}
       uniquePieceLabel={settings.unique_piece_label ?? undefined}
       shippingInsuredText={settings.shipping_insured_text ?? undefined}
     />

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { RefreshCw, CheckCircle, XCircle, Loader2, Link2 } from "lucide-react";
+import { RefreshCw, CheckCircle, XCircle, Loader2, Link2, Trash2 } from "lucide-react";
 
 type Status = {
   ok: boolean;
@@ -22,6 +22,7 @@ type SyncResult = {
   inserted?: number;
   updated?: number;
   sold?: number;
+  removed?: number;
   errors?: string[];
   message?: string;
   rollback?: boolean;
@@ -41,6 +42,7 @@ export default function AdminEbaySyncPage() {
   const [rollbacking, setRollbacking] = useState(false);
   const [updatingDesc, setUpdatingDesc] = useState(false);
   const [updatingPrice, setUpdatingPrice] = useState(false);
+  const [removingUnavailable, setRemovingUnavailable] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
 
   const [flash, setFlash] = useState<"success" | "error" | "config" | null>(null);
@@ -140,6 +142,20 @@ export default function AdminEbaySyncPage() {
       .then((data) => setResult(data))
       .catch(() => setResult({ ok: false, errors: ["Update prices failed."] }))
       .finally(() => setUpdatingPrice(false));
+  };
+
+  const runRemoveUnavailable = () => {
+    if (!confirm("Remove from the store all eBay products that are no longer active (sold or ended)? This cannot be undone.")) return;
+    setRemovingUnavailable(true);
+    setResult(null);
+    fetch("/api/sync-ebay?removeUnavailable=1", {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((data) => setResult(data))
+      .catch(() => setResult({ ok: false, errors: ["Sync sales failed."] }))
+      .finally(() => setRemovingUnavailable(false));
   };
 
   if (loading || !status) {
@@ -276,6 +292,22 @@ export default function AdminEbaySyncPage() {
 
         <hr className="border-noir-900/10" />
 
+        <h2 className="font-display text-lg font-medium text-noir-900">Sync sales (remove sold / unavailable)</h2>
+        <p className="text-sm text-noir-600">
+          Compares your store with active eBay listings. Removes products that are no longer for sale on eBay (sold or ended).
+        </p>
+        <button
+          type="button"
+          onClick={runRemoveUnavailable}
+          disabled={!status.readyToSync || removingUnavailable}
+          className="inline-flex items-center gap-2 rounded-full border border-noir-900/30 bg-white px-6 py-3 text-sm font-medium text-noir-700 transition hover:bg-noir-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {removingUnavailable ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          Sync sales (remove unavailable)
+        </button>
+
+        <hr className="border-noir-900/10" />
+
         <h2 className="font-display text-lg font-medium text-noir-900">Update existing products only</h2>
         <p className="text-sm text-noir-600">
           Only updates products already in your store (from eBay). Does not add new products.
@@ -308,10 +340,13 @@ export default function AdminEbaySyncPage() {
             }`}
           >
             <p className="font-medium text-noir-900">
-              {result.rollback ? "Rollback completed" : result.skipped !== undefined ? "Update report" : result.ok ? "Sync completed" : "Sync completed with errors"}
+              {result.rollback ? "Rollback completed" : result.removed !== undefined ? "Sync sales completed" : result.skipped !== undefined ? "Update report" : result.ok ? "Sync completed" : "Sync completed with errors"}
             </p>
             {result.ok && result.rollback && (
               <p className="mt-2 text-sm text-noir-600">Removed {result.deleted ?? 0} eBay product(s) from the store.</p>
+            )}
+            {result.ok && result.removed !== undefined && (
+              <p className="mt-2 text-sm text-noir-600">Removed {result.removed} product(s) no longer available on eBay.</p>
             )}
             {result.ok && result.skipped !== undefined && (
               <p className="mt-2 text-sm text-noir-600">
