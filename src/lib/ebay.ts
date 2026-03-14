@@ -194,7 +194,8 @@ async function ebayRequest<T>(path: string): Promise<T> {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "Accept": "application/json",
+      Accept: "application/json",
+      "Accept-Language": "en-US",
     },
   });
 
