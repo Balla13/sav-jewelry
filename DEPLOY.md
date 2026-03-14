@@ -40,8 +40,14 @@ Para o site continuar funcionando igual (Stripe, Supabase, Resend, cron, etc.), 
    | `RESEND_FROM_EMAIL` | (Opcional) Ex.: `contact@savjewelry.shop` depois de verificar o domínio no Resend |
    | `NEXT_PUBLIC_SITE_URL` | **Produção:** `https://savjewelry.shop` — usado em e-mails e links. Defina na Vercel e faça Redeploy. |
    | `CRON_SECRET` | (Opcional) Uma senha qualquer em texto para proteger o endpoint de carrinho abandonado |
+   | `EBAY_CLIENT_ID` | App ID do eBay (Application Keys → Production ou Sandbox) |
+   | `EBAY_CLIENT_SECRET` | Cert ID do eBay |
+   | `EBAY_REDIRECT_URI` | URL de callback OAuth, ex.: `https://savjewelry.shop/api/ebay-oauth/callback` — deve estar configurada como RuName no [eBay User Tokens](https://developer.ebay.com/my/auth) |
+   | `EBAY_ENVIRONMENT` | `production` ou `sandbox` |
 
 3. Salve e volte para a aba **Deployments**.
+
+**eBay Sync:** depois de configurar as variáveis, rode a migration `015_ebay_tokens.sql` no Supabase. Em Admin → eBay Sync, clique em **Connect eBay account** e autorize com sua conta eBay vendedora. Depois disso o botão **Sync now** ficará disponível.
 
 ### Passo 4: Fazer o primeiro deploy
 

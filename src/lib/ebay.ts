@@ -22,30 +22,120 @@ function getEbayBaseUrl(): string {
   return env === "sandbox" ? "https://api.sandbox.ebay.com" : "https://api.ebay.com";
 }
 
+const SELL_INVENTORY_SCOPE = "https://api.ebay.com/oauth/api_scope/sell.inventory";
+
 export function isEbayConfigured(): boolean {
   return !!(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET);
+}
+
+export function isEbayOAuthReady(): boolean {
+  return !!(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET && process.env.EBAY_REDIRECT_URI);
+}
+
+async function getRefreshTokenFromDb(): Promise<string | null> {
+  const supabase = createServerAdminClient();
+  if (!supabase) return null;
+  const { data } = await supabase.from("ebay_tokens").select("refresh_token").eq("id", "default").maybeSingle();
+  return data?.refresh_token ?? null;
+}
+
+export async function hasEbayUserToken(): Promise<boolean> {
+  const token = await getRefreshTokenFromDb();
+  return !!token;
+}
+
+export async function saveRefreshTokenToDb(refreshToken: string): Promise<void> {
+  const supabase = createServerAdminClient();
+  if (!supabase) throw new Error("SUPABASE_SERVICE_ROLE_KEY not set");
+  const { error } = await supabase
+    .from("ebay_tokens")
+    .upsert({ id: "default", refresh_token: refreshToken, updated_at: new Date().toISOString() }, { onConflict: "id" });
+  if (error) throw new Error(`Failed to save eBay token: ${error.message}`);
+}
+
+function getAuthBaseUrl(): string {
+  const env = (process.env.EBAY_ENVIRONMENT || "production").toLowerCase();
+  return env === "sandbox" ? "https://auth.sandbox.ebay.com" : "https://auth.ebay.com";
+}
+
+export function buildEbayAuthorizationUrl(state: string): string {
+  const clientId = (process.env.EBAY_CLIENT_ID || "").trim();
+  const redirectUri = (process.env.EBAY_REDIRECT_URI || "").trim();
+  if (!clientId || !redirectUri) throw new Error("Missing EBAY_CLIENT_ID or EBAY_REDIRECT_URI");
+  const authUrl = getAuthBaseUrl();
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: "code",
+    redirect_uri: redirectUri,
+    scope: SELL_INVENTORY_SCOPE,
+    state,
+    prompt: "login",
+  });
+  return `${authUrl}/oauth2/authorize?${params.toString()}`;
+}
+
+export async function exchangeEbayCodeForTokens(code: string): Promise<{ access_token: string; refresh_token: string }> {
+  const clientId = (process.env.EBAY_CLIENT_ID || "").trim();
+  const clientSecret = (process.env.EBAY_CLIENT_SECRET || "").trim();
+  const redirectUri = (process.env.EBAY_REDIRECT_URI || "").trim();
+  if (!clientId || !clientSecret || !redirectUri) throw new Error("Missing EBAY_CLIENT_ID, EBAY_CLIENT_SECRET or EBAY_REDIRECT_URI");
+
+  const baseUrl = getEbayBaseUrl();
+  const basic = Buffer.from(`${clientId}:${clientSecret}`, "utf8").toString("base64");
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code: decodeURIComponent(code),
+    redirect_uri: redirectUri,
+  }).toString();
+
+  const res = await fetch(`${baseUrl}/identity/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basic}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+
+  const json = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    refresh_token?: string;
+    error?: string;
+    error_description?: string;
+  };
+
+  if (!res.ok || !json.access_token || !json.refresh_token) {
+    const errMsg = [json.error, json.error_description].filter(Boolean).join(" — ") || `HTTP ${res.status}`;
+    throw new Error(`eBay OAuth exchange failed: ${errMsg}`);
+  }
+  return { access_token: json.access_token, refresh_token: json.refresh_token };
 }
 
 let cachedToken: { accessToken: string; expiresAtMs: number } | null = null;
 
 async function getEbayAccessToken(): Promise<string> {
-  const clientId = process.env.EBAY_CLIENT_ID;
-  const clientSecret = process.env.EBAY_CLIENT_SECRET;
+  const clientId = (process.env.EBAY_CLIENT_ID || "").trim();
+  const clientSecret = (process.env.EBAY_CLIENT_SECRET || "").trim();
   if (!clientId || !clientSecret) throw new Error("Missing EBAY_CLIENT_ID or EBAY_CLIENT_SECRET");
 
   if (cachedToken && Date.now() < cachedToken.expiresAtMs - 30_000) {
     return cachedToken.accessToken;
   }
 
+  const refreshToken = await getRefreshTokenFromDb();
+  if (!refreshToken) {
+    throw new Error("eBay not connected. Please connect your eBay account first (eBay Sync → Connect eBay).");
+  }
+
   const baseUrl = getEbayBaseUrl();
-  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const basic = Buffer.from(`${clientId}:${clientSecret}`, "utf8").toString("base64");
   const body = new URLSearchParams({
-    grant_type: "client_credentials",
-    scope: "https://api.ebay.com/oauth/api_scope/sell.inventory",
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
   }).toString();
 
   // eslint-disable-next-line no-console
-  console.log("[ebay] fetching OAuth token", { environment: process.env.EBAY_ENVIRONMENT || "production" });
+  console.log("[ebay] refreshing User token", { environment: process.env.EBAY_ENVIRONMENT || "production" });
 
   const res = await fetch(`${baseUrl}/identity/v1/oauth2/token`, {
     method: "POST",
@@ -59,12 +149,20 @@ async function getEbayAccessToken(): Promise<string> {
   const json = (await res.json().catch(() => ({}))) as {
     access_token?: string;
     expires_in?: number;
+    refresh_token?: string;
     error?: string;
     error_description?: string;
   };
 
   if (!res.ok || !json.access_token) {
-    throw new Error(`eBay OAuth failed: ${json.error || res.status} ${json.error_description || ""}`.trim());
+    const errMsg = [json.error, json.error_description].filter(Boolean).join(" — ") || `HTTP ${res.status}`;
+    // eslint-disable-next-line no-console
+    console.error("[ebay] OAuth refresh failed", { status: res.status, error: json.error, error_description: json.error_description });
+    throw new Error(`eBay OAuth failed: ${errMsg}. Try disconnecting and reconnecting your eBay account.`);
+  }
+
+  if (json.refresh_token) {
+    await saveRefreshTokenToDb(json.refresh_token);
   }
 
   const expiresIn = Number(json.expires_in || 0);
@@ -234,7 +332,14 @@ export async function syncEbayProducts(params?: { dryRun?: boolean }): Promise<S
 
   let products: EbayProduct[] = [];
   try {
-    products = isEbayConfigured() ? await fetchEbayProducts() : await fetchMockEbayProducts();
+    if (!isEbayConfigured()) {
+      products = await fetchMockEbayProducts();
+    } else if (!(await hasEbayUserToken())) {
+      result.errors.push("eBay not connected. Connect your eBay account first (Connect eBay button).");
+      return result;
+    } else {
+      products = await fetchEbayProducts();
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to fetch from eBay";
     result.errors.push(msg);

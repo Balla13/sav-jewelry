@@ -3,12 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { RefreshCw, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { RefreshCw, CheckCircle, XCircle, Loader2, Link2 } from "lucide-react";
 
 type Status = {
   ok: boolean;
   configured: boolean;
+  oauthReady?: boolean;
+  hasUserToken?: boolean;
+  readyToSync?: boolean;
   environment: string;
   message: string;
 };
@@ -24,10 +28,35 @@ type SyncResult = {
 export default function AdminEbaySyncPage() {
   const router = useRouter();
   const locale = useLocale();
+  const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
+
+  const [flash, setFlash] = useState<"success" | "error" | "config" | null>(null);
+
+  useEffect(() => {
+    const connected = searchParams.get("connected");
+    const err = searchParams.get("error");
+    if (connected === "1") {
+      setFlash("success");
+      fetchStatus();
+      router.replace(`/${locale}/admin/ebay-sync`);
+    } else if (err === "oauth") {
+      setFlash("error");
+      router.replace(`/${locale}/admin/ebay-sync`);
+    } else if (err === "config") {
+      setFlash("config");
+      router.replace(`/${locale}/admin/ebay-sync`);
+    }
+  }, [searchParams, router, locale]);
+
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 5000);
+    return () => clearTimeout(t);
+  }, [flash]);
 
   const fetchStatus = () => {
     setLoading(true);
@@ -96,10 +125,26 @@ export default function AdminEbaySyncPage() {
         </div>
       </div>
 
+      {flash === "success" && (
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-green-800">
+          eBay account connected successfully. You can sync now.
+        </div>
+      )}
+      {flash === "error" && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+          Could not connect to eBay. Please try again.
+        </div>
+      )}
+      {flash === "config" && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+          Add EBAY_REDIRECT_URI in Vercel (e.g. https://savjewelry.shop/api/ebay-oauth/callback).
+        </div>
+      )}
+
       <div className="space-y-6 rounded-2xl border border-noir-900/10 bg-section p-6">
         <h2 className="font-display text-lg font-medium text-noir-900">Connection status</h2>
         <div className="flex items-center gap-4 rounded-2xl border border-noir-900/5 bg-white p-4">
-          {status.configured ? (
+          {status.readyToSync ? (
             <>
               <CheckCircle className="h-10 w-10 shrink-0 text-green-600" />
               <div>
@@ -114,12 +159,26 @@ export default function AdminEbaySyncPage() {
             <>
               <XCircle className="h-10 w-10 shrink-0 text-amber-600" />
               <div>
-                <p className="font-medium text-noir-900">eBay not configured</p>
+                <p className="font-medium text-noir-900">
+                  {status.configured && status.oauthReady && !status.hasUserToken
+                    ? "eBay not connected"
+                    : "eBay not configured"}
+                </p>
                 <p className="text-sm text-noir-600">{status.message}</p>
               </div>
             </>
           )}
         </div>
+
+        {status.configured && status.oauthReady && !status.hasUserToken && (
+          <a
+            href={`/api/ebay-oauth/authorize?state=${locale}`}
+            className="inline-flex items-center gap-2 rounded-full bg-noir-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-noir-800"
+          >
+            <Link2 className="h-4 w-4" />
+            Connect eBay account
+          </a>
+        )}
 
         <button
           type="button"
@@ -139,7 +198,7 @@ export default function AdminEbaySyncPage() {
         <button
           type="button"
           onClick={runSync}
-          disabled={!status.configured || syncing}
+          disabled={!status.readyToSync || syncing}
           className="inline-flex items-center gap-2 rounded-full bg-noir-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-noir-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {syncing ? (
