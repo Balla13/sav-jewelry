@@ -306,6 +306,12 @@ export default function AdminSettingsPage() {
             Order bump
           </Link>
           <Link
+            href="/admin/ebay-sync"
+            className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
+          >
+            eBay Sync
+          </Link>
+          <Link
             href="/admin/contacts"
             className="rounded-full border border-noir-900/20 bg-white px-4 py-2 text-sm font-medium text-noir-700 transition hover:bg-noir-900/5"
           >

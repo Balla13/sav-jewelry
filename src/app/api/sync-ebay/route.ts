@@ -1,12 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { syncMockEbayProducts } from "@/lib/ebay";
+import { syncEbayProducts, isEbayConfigured } from "@/lib/ebay";
 
-const SYNC_SECRET = process.env.EBAY_SYNC_SECRET || process.env.ADMIN_PASSWORD || "";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+const SYNC_SECRET = process.env.EBAY_SYNC_SECRET || ADMIN_PASSWORD;
 
 function isAuthorized(request: NextRequest) {
-  const authHeader = request.headers.get("authorization") || "";
-  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-  return SYNC_SECRET ? token === SYNC_SECRET : false;
+  const token =
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ||
+    request.cookies.get("admin_token")?.value ||
+    "";
+  const secret = SYNC_SECRET || ADMIN_PASSWORD;
+  return !!secret && token === secret;
+}
+
+export async function GET(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const configured = isEbayConfigured();
+  const env = (process.env.EBAY_ENVIRONMENT || "production").toLowerCase();
+  return NextResponse.json({
+    ok: true,
+    configured,
+    environment: env,
+    message: configured ? "eBay connected. Ready to sync." : "Add EBAY_CLIENT_ID and EBAY_CLIENT_SECRET in Vercel.",
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -18,7 +36,7 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line no-console
   console.log("[sync-ebay] start", { dryRun });
 
-  const result = await syncMockEbayProducts({ dryRun });
+  const result = await syncEbayProducts({ dryRun });
   if (result.errors.length > 0) {
     // eslint-disable-next-line no-console
     console.error("[sync-ebay] completed with errors", result.errors);

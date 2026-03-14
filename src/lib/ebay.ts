@@ -22,7 +22,7 @@ function getEbayBaseUrl(): string {
   return env === "sandbox" ? "https://api.sandbox.ebay.com" : "https://api.ebay.com";
 }
 
-function isEbayConfigured(): boolean {
+export function isEbayConfigured(): boolean {
   return !!(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET);
 }
 
