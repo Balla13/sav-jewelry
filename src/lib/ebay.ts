@@ -292,9 +292,15 @@ async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
 
   const items = Array.isArray(itemArray) ? itemArray : [itemArray];
   const products: EbayProduct[] = [];
+  const cutoffMs = Date.now() - 24 * 60 * 60 * 1000;
 
   for (let i = 0; i < items.length; i++) {
     const it = items[i] as Record<string, unknown>;
+    const listingDetails = it.ListingDetails as Record<string, unknown> | undefined;
+    const startTimeRaw = listingDetails?.StartTime ?? listingDetails?.startTime;
+    const startTimeMs = startTimeRaw != null ? new Date(String(startTimeRaw)).getTime() : 0;
+    if (startTimeMs < cutoffMs) continue;
+
     const itemId = String(it.ItemID ?? it.itemID ?? "").trim() || `ebay-trading-${i}`;
     const title = String(it.Title ?? "").trim() || itemId || "eBay item";
     const desc = String(it.Description ?? "").trim();
@@ -320,7 +326,7 @@ async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
   }
 
   // eslint-disable-next-line no-console
-  console.log("[ebay] Trading API fallback", { count: products.length });
+  console.log("[ebay] Trading API fallback (last 24h only)", { count: products.length });
   return products;
 }
 
