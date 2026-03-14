@@ -231,6 +231,22 @@ async function fetchOfferPriceBySku(sku: string): Promise<number | null> {
   }
 }
 
+/** Converte URL de imagem eBay para versão alta res (até 1600px). */
+function ebayImageToHighRes(url: string): string {
+  if (!url || typeof url !== "string") return url;
+  return url.replace(/\bs-l\d+\b/, "s-l1600");
+}
+
+/** Extrai valor numérico de preço vindo do XML (pode ser string, number ou { "#text": "29.99" }). */
+function parsePrice(val: unknown): number {
+  if (val == null) return 0;
+  if (typeof val === "number" && Number.isFinite(val)) return Math.max(0, val);
+  if (typeof val === "string") return Math.max(0, parseFloat(val) || 0);
+  const obj = val as Record<string, unknown>;
+  const text = obj["#text"] ?? obj.__value ?? obj.value;
+  return parsePrice(text);
+}
+
 /** Fallback: lista anúncios ativos via Trading API (GetMyeBaySelling) — pega itens criados pelo fluxo clássico. */
 async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
   const token = await getEbayAccessToken();
@@ -284,11 +300,12 @@ async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
     const desc = String(it.Description ?? "").trim();
     const qty = Math.max(0, Math.floor(Number(it.QuantityAvailable ?? it.Quantity ?? 0) || 0));
     const priceVal = it.BuyItNowPrice ?? it.StartPrice ?? it.CurrentPrice ?? 0;
-    const price = Number(typeof priceVal === "string" ? priceVal : priceVal) || 0;
+    const price = parsePrice(priceVal);
     const pic = it.PictureDetails as Record<string, unknown> | undefined;
     let imgUrl = String(pic?.GalleryURL ?? "").trim();
     if (!imgUrl && Array.isArray(pic?.PictureURL)) imgUrl = String((pic.PictureURL as string[])[0] ?? "").trim();
     else if (!imgUrl && typeof pic?.PictureURL === "string") imgUrl = pic.PictureURL.trim();
+    imgUrl = ebayImageToHighRes(imgUrl);
     const images = imgUrl ? [imgUrl] : [];
 
     products.push({
@@ -330,7 +347,8 @@ export async function fetchEbayProducts(): Promise<EbayProduct[]> {
       const item = await ebayRequest<EbayInventoryItem>(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`);
       const title = item.product?.title?.trim() || sku;
       const description = item.product?.description || "";
-      const images = Array.isArray(item.product?.imageUrls) ? item.product!.imageUrls!.filter(Boolean) : [];
+      const rawImages = Array.isArray(item.product?.imageUrls) ? item.product!.imageUrls!.filter(Boolean) : [];
+      const images = rawImages.map((u) => ebayImageToHighRes(String(u))).filter(Boolean);
       const quantity = Math.max(
         0,
         Math.floor(Number(item.availability?.shipToLocationAvailability?.quantity ?? 0) || 0)

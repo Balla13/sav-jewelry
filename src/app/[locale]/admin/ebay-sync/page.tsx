@@ -24,6 +24,8 @@ type SyncResult = {
   sold?: number;
   errors?: string[];
   message?: string;
+  rollback?: boolean;
+  deleted?: number;
 };
 
 export default function AdminEbaySyncPage() {
@@ -33,6 +35,7 @@ export default function AdminEbaySyncPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [rollbacking, setRollbacking] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
 
   const [flash, setFlash] = useState<"success" | "error" | "config" | null>(null);
@@ -92,6 +95,20 @@ export default function AdminEbaySyncPage() {
       .then((data) => setResult(data))
       .catch(() => setResult({ ok: false, errors: ["Sync request failed."] }))
       .finally(() => setSyncing(false));
+  };
+
+  const runRollback = () => {
+    if (!confirm("Remove all products that came from eBay from your store? This cannot be undone.")) return;
+    setRollbacking(true);
+    setResult(null);
+    fetch("/api/sync-ebay?rollback=1", {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((data) => setResult(data))
+      .catch(() => setResult({ ok: false, errors: ["Rollback request failed."] }))
+      .finally(() => setRollbacking(false));
   };
 
   if (loading || !status) {
@@ -196,24 +213,35 @@ export default function AdminEbaySyncPage() {
           Fetches active inventory from eBay and syncs to your store. New products are added, existing ones updated,
           sold-out items marked.
         </p>
-        <button
-          type="button"
-          onClick={runSync}
-          disabled={!status.readyToSync || syncing}
-          className="inline-flex items-center gap-2 rounded-full bg-noir-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-noir-800 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {syncing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Syncing…
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-4 w-4" />
-              Sync now
-            </>
-          )}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={runSync}
+            disabled={!status.readyToSync || syncing}
+            className="inline-flex items-center gap-2 rounded-full bg-noir-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-noir-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {syncing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Syncing…
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Sync now
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={runRollback}
+            disabled={rollbacking}
+            className="inline-flex items-center gap-2 rounded-full border border-amber-600 bg-white px-6 py-3 text-sm font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-50"
+          >
+            {rollbacking ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Remove eBay products
+          </button>
+        </div>
 
         {result && (
           <div
@@ -224,7 +252,10 @@ export default function AdminEbaySyncPage() {
             <p className="font-medium text-noir-900">
               {result.ok ? "Sync completed" : "Sync completed with errors"}
             </p>
-            {result.ok && (
+            {result.ok && result.rollback && (
+              <p className="mt-2 text-sm text-noir-600">Removed {result.deleted ?? 0} eBay product(s) from the store.</p>
+            )}
+            {result.ok && !result.rollback && (
               <>
                 <p className="mt-2 text-sm text-noir-600">
                   Inserted: {result.inserted ?? 0} · Updated: {result.updated ?? 0} · Marked sold: {result.sold ?? 0}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncEbayProducts, isEbayConfigured, hasEbayUserToken, isEbayOAuthReady } from "@/lib/ebay";
+import { createServerAdminClient } from "@/lib/supabase/server-admin";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const SYNC_SECRET = process.env.EBAY_SYNC_SECRET || ADMIN_PASSWORD;
@@ -40,6 +41,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rollback = request.nextUrl.searchParams.get("rollback") === "1";
+  if (rollback) {
+    const supabase = createServerAdminClient();
+    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase not configured" }, { status: 500 });
+    const { data, error } = await supabase.from("products").delete().eq("source", "ebay").select("id");
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+    const count = Array.isArray(data) ? data.length : 0;
+    return NextResponse.json({ ok: true, rollback: true, deleted: count });
   }
 
   const dryRun = request.nextUrl.searchParams.get("dryRun") === "1";
