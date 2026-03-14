@@ -16,10 +16,14 @@ export default function CheckoutPaymentForm({ onSuccess, onCancel }: Props) {
     if (!stripe || !elements) return;
     setLoading(true);
     setError(null);
+    const returnUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}${window.location.pathname}${window.location.pathname.includes("?") ? "&" : "?"}success=1`
+        : "";
     const { error: err } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}?success=1` : "",
+        return_url: returnUrl,
       },
     });
     setLoading(false);

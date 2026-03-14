@@ -679,8 +679,10 @@ export default function CheckoutShipping() {
                   <Elements stripe={stripePromise} options={{ clientSecret }}>
                     <CheckoutPaymentForm
                       onSuccess={() => {
-                        const base = typeof window !== "undefined" ? window.location.pathname : "";
-                        window.location.href = base.includes("?") ? `${base}&success=1` : `${base}?success=1`;
+                        if (typeof window === "undefined") return;
+                        const url = new URL(window.location.href);
+                        url.searchParams.set("success", "1");
+                        window.location.href = url.toString();
                       }}
                       onCancel={() => {
                         setClientSecret(null);
