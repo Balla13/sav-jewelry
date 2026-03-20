@@ -339,7 +339,9 @@ async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
 
   const items = Array.isArray(itemArray) ? itemArray : [itemArray];
   const products: EbayProduct[] = [];
-  const cutoffMs = Date.now() - 24 * 60 * 60 * 1000;
+  const lookbackHoursRaw = Number(process.env.EBAY_TRADING_LOOKBACK_HOURS ?? "72");
+  const lookbackHours = Number.isFinite(lookbackHoursRaw) ? Math.max(0, Math.floor(lookbackHoursRaw)) : 72;
+  const cutoffMs = lookbackHours > 0 ? Date.now() - lookbackHours * 60 * 60 * 1000 : 0;
 
   for (let i = 0; i < items.length; i++) {
     const it = items[i] as Record<string, unknown>;
@@ -349,7 +351,7 @@ async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
     const listingDetails = it.ListingDetails as Record<string, unknown> | undefined;
     const startTimeRaw = listingDetails?.StartTime ?? listingDetails?.startTime;
     const startTimeMs = startTimeRaw != null ? new Date(String(startTimeRaw)).getTime() : 0;
-    if (startTimeMs < cutoffMs) continue;
+    if (cutoffMs > 0 && startTimeMs > 0 && startTimeMs < cutoffMs) continue;
 
     const itemId = String(it.ItemID ?? it.itemID ?? "").trim() || `ebay-trading-${i}`;
     const title = String(it.Title ?? "").trim() || itemId || "eBay item";
@@ -377,7 +379,10 @@ async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
   }
 
   // eslint-disable-next-line no-console
-  console.log("[ebay] Trading API fallback (last 24h only)", { count: products.length });
+  console.log("[ebay] Trading API fallback", {
+    count: products.length,
+    lookbackHours: cutoffMs > 0 ? lookbackHours : "all-active",
+  });
   return products;
 }
 
