@@ -248,38 +248,56 @@ async function fetchOfferPriceBySku(sku: string): Promise<number | null> {
   }
 }
 
+function isEbayListingItemId(id: string): boolean {
+  return /^\d{10,14}$/.test(id.trim());
+}
+
+function buildEbayProductLookup(products: EbayProduct[]): Map<string, EbayProduct> {
+  const map = new Map<string, EbayProduct>();
+  for (const p of products) {
+    const sid = (p.source_id || "").trim();
+    const sku = (p.sku || "").trim();
+    if (sid) map.set(sid, p);
+    if (sku && sku !== sid) map.set(sku, p);
+    if (sku) map.set(sku.toLowerCase(), p);
+  }
+  return map;
+}
+
+function lookupEbayProduct(
+  lookup: Map<string, EbayProduct>,
+  sourceId: string,
+  sku?: string | null
+): EbayProduct | undefined {
+  const sid = sourceId.trim();
+  if (sid && lookup.has(sid)) return lookup.get(sid);
+  const s = (sku || "").trim();
+  if (s && lookup.has(s)) return lookup.get(s);
+  if (s && lookup.has(s.toLowerCase())) return lookup.get(s.toLowerCase());
+  return undefined;
+}
+
 /** Busca um item no eBay por ItemID (GetItem) e retorna descrição e preço. */
 async function getEbayItemByItemId(itemId: string): Promise<{ description?: string; price?: number } | null> {
-  const token = await getEbayAccessToken();
-  const baseUrl = getEbayBaseUrl();
-  const url = `${baseUrl}/ws/api.dll`;
+  if (!isEbayListingItemId(itemId)) return null;
+
   const xmlBody = `<?xml version="1.0" encoding="utf-8"?>
 <GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <ItemID>${String(itemId).replace(/[<>&"']/g, "")}</ItemID>
   <DetailLevel>ReturnAll</DetailLevel>
+  <IncludeItemSpecifics>true</IncludeItemSpecifics>
 </GetItemRequest>`;
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/xml; charset=utf-8",
-      "X-EBAY-API-IAF-TOKEN": token,
-      "X-EBAY-API-CALL-NAME": "GetItem",
-      "X-EBAY-API-SITEID": "0",
-      "X-EBAY-API-COMPATIBILITY-LEVEL": "1311",
-      "Accept-Language": "en-US",
-    },
-    body: xmlBody,
-  });
-
-  const text = await res.text();
-  if (!res.ok) return null;
-
+  const text = await ebayTradingPost("GetItem", xmlBody);
   const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
   const parsed = parser.parse(text) as Record<string, unknown>;
-  const resp = parsed.GetItemResponse ?? parsed.getItemResponse;
+  const resp = (parsed.GetItemResponse ?? parsed.getItemResponse) as Record<string, unknown> | undefined;
   if (!resp) return null;
-  const item = (resp as Record<string, unknown>).Item as Record<string, unknown> | undefined;
+
+  const ack = String(resp.Ack ?? resp.ack ?? "").toLowerCase();
+  if (ack === "failure" || ack === "partialfailure") return null;
+
+  const item = resp.Item as Record<string, unknown> | undefined;
   if (!item) return null;
 
   const descRaw = item.Description ?? item.description;
@@ -769,7 +787,66 @@ export type UpdateOnlyReport = {
   skipped: number;
   notFound: number;
   errors: string[];
+  message?: string;
 };
+
+export type RemoveAllEbayReport = {
+  ok: boolean;
+  deleted: number;
+  errors: string[];
+};
+
+/** Remove todos os produtos importados do eBay (para limpar antes de um sync novo). */
+export async function removeAllEbayProductsFromStore(): Promise<RemoveAllEbayReport> {
+  const report: RemoveAllEbayReport = { ok: true, deleted: 0, errors: [] };
+  const supabase = createServerAdminClient();
+  if (!supabase) {
+    report.ok = false;
+    report.errors.push("SUPABASE_SERVICE_ROLE_KEY not set");
+    return report;
+  }
+
+  const { data: rows, error: listErr } = await supabase
+    .from("products")
+    .select("id, source, source_id");
+  if (listErr) {
+    report.ok = false;
+    report.errors.push(listErr.message);
+    return report;
+  }
+
+  const idsToDelete = ((rows || []) as { id: string; source: string | null; source_id: string | null }[])
+    .filter((r) => {
+      if (r.source === "ebay") return true;
+      const sid = r.source_id?.trim() || "";
+      return isEbayListingItemId(sid);
+    })
+    .map((r) => r.id);
+
+  if (idsToDelete.length === 0) return report;
+
+  const chunkSize = 100;
+  for (let i = 0; i < idsToDelete.length; i += chunkSize) {
+    const chunk = idsToDelete.slice(i, i + chunkSize);
+    const { data, error } = await supabase.from("products").delete().in("id", chunk).select("id");
+    if (error) {
+      report.errors.push(error.message);
+      continue;
+    }
+    report.deleted += Array.isArray(data) ? data.length : 0;
+  }
+
+  if (report.errors.length) report.ok = false;
+  return report;
+}
+
+async function fetchEbayCatalogForUpdates(): Promise<Map<string, EbayProduct>> {
+  if (!(await hasEbayUserToken())) {
+    throw new Error("eBay not connected. Connect your eBay account first.");
+  }
+  const products = await fetchEbayProducts();
+  return buildEbayProductLookup(products);
+}
 
 /** Atualiza apenas as descrições dos produtos já cadastrados (source=ebay). Não cria produtos novos. */
 export async function updateOnlyDescriptions(): Promise<UpdateOnlyReport> {
@@ -781,9 +858,18 @@ export async function updateOnlyDescriptions(): Promise<UpdateOnlyReport> {
     return report;
   }
 
+  let lookup: Map<string, EbayProduct>;
+  try {
+    lookup = await fetchEbayCatalogForUpdates();
+  } catch (e) {
+    report.ok = false;
+    report.errors.push(e instanceof Error ? e.message : "Failed to fetch eBay catalog");
+    return report;
+  }
+
   const { data: products, error: listErr } = await supabase
     .from("products")
-    .select("id, source_id, description")
+    .select("id, source_id, sku, description")
     .eq("source", "ebay")
     .not("source_id", "is", null);
   if (listErr) {
@@ -791,32 +877,68 @@ export async function updateOnlyDescriptions(): Promise<UpdateOnlyReport> {
     report.errors.push(listErr.message);
     return report;
   }
-  const rows = (products || []) as { id: string; source_id: string; description: string | null }[];
-  if (rows.length === 0) return report;
+  const rows = (products || []) as { id: string; source_id: string; sku: string | null; description: string | null }[];
+  if (rows.length === 0) {
+    report.message = "Nenhum produto com source=ebay na loja.";
+    return report;
+  }
+
+  const getItemDescCache = new Map<string, string>();
+  const idsNeedingGetItem = new Set<string>();
+  for (const row of rows) {
+    const sourceId = row.source_id?.trim();
+    if (!sourceId) continue;
+    const fromLookup = lookupEbayProduct(lookup, sourceId, row.sku)?.description?.trim();
+    if (!fromLookup && isEbayListingItemId(sourceId)) idsNeedingGetItem.add(sourceId);
+  }
+
+  const getItemQueue = Array.from(idsNeedingGetItem);
+  const workerCount = Math.min(5, getItemQueue.length || 1);
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (getItemQueue.length > 0) {
+        const itemId = getItemQueue.shift();
+        if (!itemId) break;
+        try {
+          const item = await getEbayItemByItemId(itemId);
+          const desc = item?.description?.trim();
+          if (desc) getItemDescCache.set(itemId, desc);
+        } catch {
+          // ignore per-item failures
+        }
+      }
+    })
+  );
 
   for (const row of rows) {
     const sourceId = row.source_id?.trim();
     if (!sourceId) continue;
     try {
-      const item = await getEbayItemByItemId(sourceId);
-      if (!item) {
+      let description =
+        lookupEbayProduct(lookup, sourceId, row.sku)?.description?.trim() || getItemDescCache.get(sourceId);
+
+      if (!description) {
         report.notFound += 1;
         continue;
       }
-      if (!item.description?.trim()) {
+      if (row.description?.trim() === description) {
         report.skipped += 1;
         continue;
       }
-      if (row.description?.trim() === item.description.trim()) {
-        report.skipped += 1;
-        continue;
-      }
-      const { error: updErr } = await supabase.from("products").update({ description: item.description.trim() }).eq("id", row.id);
+      const { error: updErr } = await supabase
+        .from("products")
+        .update({ description, updated_at: new Date().toISOString() })
+        .eq("id", row.id);
       if (updErr) report.errors.push(`${sourceId}: ${updErr.message}`);
       else report.updated += 1;
     } catch (e) {
       report.errors.push(`${sourceId}: ${e instanceof Error ? e.message : "Unknown error"}`);
     }
+  }
+
+  if (report.errors.length) report.ok = false;
+  else if (report.updated === 0 && report.notFound > 0) {
+    report.message = "Nenhuma descrição encontrada no eBay para os produtos da loja.";
   }
   return report;
 }
@@ -831,9 +953,18 @@ export async function updateOnlyPrices(): Promise<UpdateOnlyReport> {
     return report;
   }
 
+  let lookup: Map<string, EbayProduct>;
+  try {
+    lookup = await fetchEbayCatalogForUpdates();
+  } catch (e) {
+    report.ok = false;
+    report.errors.push(e instanceof Error ? e.message : "Failed to fetch eBay catalog");
+    return report;
+  }
+
   const { data: products, error: listErr } = await supabase
     .from("products")
-    .select("id, source_id, price_usd")
+    .select("id, source_id, sku, price_usd, compare_at_price")
     .eq("source", "ebay")
     .not("source_id", "is", null);
   if (listErr) {
@@ -841,33 +972,64 @@ export async function updateOnlyPrices(): Promise<UpdateOnlyReport> {
     report.errors.push(listErr.message);
     return report;
   }
-  const rows = (products || []) as { id: string; source_id: string; price_usd: number | null }[];
-  if (rows.length === 0) return report;
+  const rows = (products || []) as {
+    id: string;
+    source_id: string;
+    sku: string | null;
+    price_usd: number | null;
+    compare_at_price: number | null;
+  }[];
+  if (rows.length === 0) {
+    report.message = "Nenhum produto com source=ebay na loja.";
+    return report;
+  }
 
   for (const row of rows) {
     const sourceId = row.source_id?.trim();
     if (!sourceId) continue;
     try {
-      const item = await getEbayItemByItemId(sourceId);
-      if (!item || item.price == null || item.price <= 0) {
+      let ebayPrice = lookupEbayProduct(lookup, sourceId, row.sku)?.price;
+
+      if ((ebayPrice == null || ebayPrice <= 0) && isEbayListingItemId(sourceId)) {
+        const fromGetItem = await getEbayItemByItemId(sourceId);
+        ebayPrice = fromGetItem?.price;
+      }
+
+      if (ebayPrice == null || ebayPrice <= 0) {
         report.notFound += 1;
         continue;
       }
-      const { storePrice, compareAtPrice } = applyEbayMirrorPricing(item.price);
+
+      const { storePrice, compareAtPrice } = applyEbayMirrorPricing(ebayPrice);
       const existingPrice = Number(row.price_usd) || 0;
-      if (existingPrice === storePrice) {
+      const existingCompare = Number(row.compare_at_price) || 0;
+      if (existingPrice === storePrice && existingCompare === (compareAtPrice ?? 0)) {
         report.skipped += 1;
         continue;
       }
+
       const { error: updErr } = await supabase
         .from("products")
-        .update({ price_usd: storePrice, compare_at_price: compareAtPrice })
+        .update({
+          price_usd: storePrice,
+          price: storePrice,
+          compare_at_price: compareAtPrice,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", row.id);
       if (updErr) report.errors.push(`${sourceId}: ${updErr.message}`);
       else report.updated += 1;
     } catch (e) {
       report.errors.push(`${sourceId}: ${e instanceof Error ? e.message : "Unknown error"}`);
     }
+  }
+
+  if (report.errors.length) report.ok = false;
+  else if (report.updated === 0 && report.notFound > 0) {
+    report.message = "Nenhum preço encontrado no eBay para os produtos da loja.";
+  } else if (report.updated > 0) {
+    const pct = getEbayMirrorDiscountRate() * 100;
+    report.message = `Preços atualizados com ${pct}% de desconto em relação ao eBay.`;
   }
   return report;
 }

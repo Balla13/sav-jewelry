@@ -25,6 +25,7 @@ type SyncResult = {
   sold?: number;
   removed?: number;
   errors?: string[];
+  error?: string;
   message?: string;
   rollback?: boolean;
   deleted?: number;
@@ -92,6 +93,18 @@ export default function AdminEbaySyncPage() {
     fetchStatus();
   }, [router, locale]);
 
+  const parseApiResult = async (res: Response): Promise<SyncResult> => {
+    const data = (await res.json().catch(() => ({}))) as SyncResult;
+    if (res.status === 401) {
+      router.replace(`/${locale}/admin`);
+      return { ok: false, errors: ["Sessão expirada. Faça login novamente no admin."] };
+    }
+    if (!res.ok && !data.errors?.length && data.error) {
+      return { ...data, ok: false, errors: [data.error] };
+    }
+    return data;
+  };
+
   const runSync = () => {
     setSyncing(true);
     setResult(null);
@@ -99,23 +112,28 @@ export default function AdminEbaySyncPage() {
       method: "POST",
       credentials: "include",
     })
-      .then((res) => res.json())
+      .then(parseApiResult)
       .then((data) => setResult(data))
-      .catch(() => setResult({ ok: false, errors: ["Sync request failed."] }))
+      .catch(() => setResult({ ok: false, errors: ["Falha ao sincronizar. Tente de novo."] }))
       .finally(() => setSyncing(false));
   };
 
   const runRollback = () => {
-    if (!confirm("Remove all products that came from eBay from your store? This cannot be undone.")) return;
+    if (
+      !confirm(
+        "Remover todos os produtos importados do eBay da loja? Use antes de um sync limpo. Esta ação não pode ser desfeita."
+      )
+    )
+      return;
     setRollbacking(true);
     setResult(null);
     fetch("/api/sync-ebay?rollback=1", {
       method: "POST",
       credentials: "include",
     })
-      .then((res) => res.json())
-      .then((data) => setResult(data))
-      .catch(() => setResult({ ok: false, errors: ["Rollback request failed."] }))
+      .then(parseApiResult)
+      .then((data) => setResult({ ...data, rollback: true }))
+      .catch(() => setResult({ ok: false, rollback: true, errors: ["Falha ao remover produtos do eBay."] }))
       .finally(() => setRollbacking(false));
   };
 
@@ -126,9 +144,9 @@ export default function AdminEbaySyncPage() {
       method: "POST",
       credentials: "include",
     })
-      .then((res) => res.json())
+      .then(parseApiResult)
       .then((data) => setResult(data))
-      .catch(() => setResult({ ok: false, errors: ["Update descriptions failed."] }))
+      .catch(() => setResult({ ok: false, errors: ["Falha ao atualizar descrições."] }))
       .finally(() => setUpdatingDesc(false));
   };
 
@@ -139,9 +157,9 @@ export default function AdminEbaySyncPage() {
       method: "POST",
       credentials: "include",
     })
-      .then((res) => res.json())
+      .then(parseApiResult)
       .then((data) => setResult(data))
-      .catch(() => setResult({ ok: false, errors: ["Update prices failed."] }))
+      .catch(() => setResult({ ok: false, errors: ["Falha ao atualizar preços."] }))
       .finally(() => setUpdatingPrice(false));
   };
 
@@ -295,7 +313,8 @@ export default function AdminEbaySyncPage() {
 
         <h2 className="font-display text-lg font-medium text-noir-900">Update existing products only</h2>
         <p className="text-sm text-noir-600">
-          Only updates products already in your store (from eBay). Does not add new products.
+          Atualiza produtos já na loja (source=eBay) com dados atuais do eBay. Não cria produtos novos. Preços
+          aplicam o desconto espelho (5% abaixo do eBay por padrão).
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -325,18 +344,40 @@ export default function AdminEbaySyncPage() {
             }`}
           >
             <p className="font-medium text-noir-900">
-              {result.rollback ? "Rollback completed" : result.removed !== undefined ? "Sync sales completed" : result.skipped !== undefined ? "Update report" : result.ok ? "Sync completed" : "Sync completed with errors"}
+              {result.rollback
+                ? result.ok
+                  ? "Produtos eBay removidos"
+                  : "Erro ao remover produtos eBay"
+                : result.removed !== undefined
+                  ? result.ok
+                    ? "Vendas sincronizadas"
+                    : "Erro ao sincronizar vendas"
+                  : result.skipped !== undefined
+                    ? result.ok
+                      ? "Atualização concluída"
+                      : "Atualização com erros"
+                    : result.ok
+                      ? "Sync concluído"
+                      : "Sync com erros"}
             </p>
             {result.ok && result.rollback && (
-              <p className="mt-2 text-sm text-noir-600">Removed {result.deleted ?? 0} eBay product(s) from the store.</p>
+              <p className="mt-2 text-sm text-noir-600">
+                Removidos {result.deleted ?? 0} produto(s) do eBay da loja. Agora você pode rodar &quot;Sync now&quot; limpo.
+              </p>
             )}
             {result.ok && result.removed !== undefined && (
-              <p className="mt-2 text-sm text-noir-600">Removed {result.removed} product(s) no longer available on eBay.</p>
-            )}
-            {result.ok && result.skipped !== undefined && (
               <p className="mt-2 text-sm text-noir-600">
-                Updated: {result.updated ?? 0} · Skipped (no change): {result.skipped ?? 0} · Not found on eBay: {result.notFound ?? 0}
+                Removidos {result.removed} produto(s) que não estão mais ativos no eBay.
               </p>
+            )}
+            {result.skipped !== undefined && (
+              <p className="mt-2 text-sm text-noir-600">
+                Atualizados: {result.updated ?? 0} · Sem alteração: {result.skipped ?? 0} · Não encontrados no eBay:{" "}
+                {result.notFound ?? 0}
+              </p>
+            )}
+            {result.message && (
+              <p className="mt-2 text-sm text-noir-500">{result.message}</p>
             )}
             {result.ok && !result.rollback && result.skipped === undefined && (
               <>

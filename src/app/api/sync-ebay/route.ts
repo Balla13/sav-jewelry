@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { syncEbayProducts, isEbayConfigured, hasEbayUserToken, isEbayOAuthReady, updateOnlyDescriptions, updateOnlyPrices, removeUnavailableEbayProducts } from "@/lib/ebay";
-import { createServerAdminClient } from "@/lib/supabase/server-admin";
+import {
+  syncEbayProducts,
+  isEbayConfigured,
+  hasEbayUserToken,
+  isEbayOAuthReady,
+  updateOnlyDescriptions,
+  updateOnlyPrices,
+  removeUnavailableEbayProducts,
+  removeAllEbayProductsFromStore,
+} from "@/lib/ebay";
+
+export const maxDuration = 60;
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const SYNC_SECRET = process.env.EBAY_SYNC_SECRET || ADMIN_PASSWORD;
@@ -45,24 +55,30 @@ export async function POST(request: NextRequest) {
 
   const rollback = request.nextUrl.searchParams.get("rollback") === "1";
   if (rollback) {
-    const supabase = createServerAdminClient();
-    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase not configured" }, { status: 500 });
-    const { data, error } = await supabase.from("products").delete().eq("source", "ebay").select("id");
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    const report = await removeAllEbayProductsFromStore();
+    if (!report.ok) {
+      return NextResponse.json(
+        { ok: false, rollback: true, deleted: report.deleted, errors: report.errors },
+        { status: 500 }
+      );
     }
-    const count = Array.isArray(data) ? data.length : 0;
-    return NextResponse.json({ ok: true, rollback: true, deleted: count });
+    return NextResponse.json({ ok: true, rollback: true, deleted: report.deleted });
   }
 
   const updateMode = request.nextUrl.searchParams.get("update");
   if (updateMode === "description") {
     const report = await updateOnlyDescriptions();
-    return NextResponse.json(report.errors.length ? { ...report, ok: false } : report);
+    return NextResponse.json(
+      report.ok ? report : { ...report, ok: false },
+      { status: report.ok ? 200 : 500 }
+    );
   }
   if (updateMode === "price") {
     const report = await updateOnlyPrices();
-    return NextResponse.json(report.errors.length ? { ...report, ok: false } : report);
+    return NextResponse.json(
+      report.ok ? report : { ...report, ok: false },
+      { status: report.ok ? 200 : 500 }
+    );
   }
 
   if (request.nextUrl.searchParams.get("removeUnavailable") === "1") {
