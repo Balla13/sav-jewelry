@@ -44,6 +44,7 @@ Para o site continuar funcionando igual (Stripe, Supabase, Resend, cron, etc.), 
    | `EBAY_CLIENT_SECRET` | Cert ID do eBay |
    | `EBAY_REDIRECT_URI` | URL de callback OAuth, ex.: `https://savjewelry.shop/api/ebay-oauth/callback` — deve estar configurada como RuName no [eBay User Tokens](https://developer.ebay.com/my/auth) |
    | `EBAY_ENVIRONMENT` | `production` ou `sandbox` |
+   | `EBAY_MIRROR_DISCOUNT_PERCENT` | (opcional) Desconto da loja vs preço eBay; padrão `5` (= 5% mais barato que o eBay) |
 
 3. Salve e volte para a aba **Deployments**.
 

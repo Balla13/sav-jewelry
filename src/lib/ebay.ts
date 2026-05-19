@@ -27,6 +27,23 @@ function getEbayBaseUrl(): string {
 
 const SELL_INVENTORY_SCOPE = "https://api.ebay.com/oauth/api_scope/sell.inventory";
 
+/** Desconto da loja em relação ao preço do eBay (espelho com 5% off por padrão). */
+function getEbayMirrorDiscountRate(): number {
+  const pct = Number(process.env.EBAY_MIRROR_DISCOUNT_PERCENT ?? "5");
+  if (!Number.isFinite(pct) || pct < 0 || pct > 100) return 0.05;
+  return pct / 100;
+}
+
+/** Preço na loja = eBay − desconto; compare_at = preço original do eBay. */
+export function applyEbayMirrorPricing(ebayPrice: number): { storePrice: number; compareAtPrice: number | null } {
+  const original = Number.isFinite(ebayPrice) ? Math.max(0, ebayPrice) : 0;
+  if (original <= 0) return { storePrice: 0, compareAtPrice: null };
+  const rate = getEbayMirrorDiscountRate();
+  const storePrice = Math.round(original * (1 - rate) * 100) / 100;
+  const compareAtPrice = Math.round(original * 100) / 100;
+  return { storePrice, compareAtPrice };
+}
+
 export function isEbayConfigured(): boolean {
   return !!(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET);
 }
@@ -294,139 +311,158 @@ function parsePrice(val: unknown): number {
   return parsePrice(text);
 }
 
-/** Fallback: lista anúncios ativos via Trading API (GetMyeBaySelling) — pega itens criados pelo fluxo clássico. */
-async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
+async function ebayTradingPost(callName: string, xmlBody: string): Promise<string> {
   const token = await getEbayAccessToken();
   const baseUrl = getEbayBaseUrl();
-  const url = `${baseUrl}/ws/api.dll`;
-  const xmlBody = `<?xml version="1.0" encoding="utf-8"?>
-<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-  <ActiveList><Include>true</Include><Pagination><EntriesPerPage>200</EntriesPerPage><PageNumber>1</PageNumber></Pagination></ActiveList>
-  <DetailLevel>ReturnAll</DetailLevel>
-</GetMyeBaySellingRequest>`;
-
-  const res = await fetch(url, {
+  const res = await fetch(`${baseUrl}/ws/api.dll`, {
     method: "POST",
     headers: {
       "Content-Type": "text/xml; charset=utf-8",
       "X-EBAY-API-IAF-TOKEN": token,
-      "X-EBAY-API-CALL-NAME": "GetMyeBaySelling",
+      "X-EBAY-API-CALL-NAME": callName,
       "X-EBAY-API-SITEID": "0",
       "X-EBAY-API-COMPATIBILITY-LEVEL": "1311",
       "Accept-Language": "en-US",
     },
     body: xmlBody,
   });
-
   const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`eBay Trading API error: ${res.status} ${text.slice(0, 200)}`);
-  }
-
-  const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
-  const parsed = parser.parse(text) as Record<string, unknown>;
-  const resp = (parsed.GetMyeBaySellingResponse ?? parsed.getMyeBaySellingResponse) as {
-    ActiveList?: { ItemArray?: { Item?: Record<string, unknown> | Record<string, unknown>[] } };
-    Errors?: { ShortMessage?: string };
-  } | undefined;
-  const activeList = resp?.ActiveList;
-  const itemArray = activeList?.ItemArray?.Item;
-  if (!itemArray) {
-    const err = resp?.Errors?.ShortMessage;
-    if (err) throw new Error(`eBay Trading API: ${err}`);
-    return [];
-  }
-
-  const items = Array.isArray(itemArray) ? itemArray : [itemArray];
-  const products: EbayProduct[] = [];
-  const lookbackHoursRaw = Number(process.env.EBAY_TRADING_LOOKBACK_HOURS ?? "72");
-  const lookbackHours = Number.isFinite(lookbackHoursRaw) ? Math.max(0, Math.floor(lookbackHoursRaw)) : 72;
-  const cutoffMs = lookbackHours > 0 ? Date.now() - lookbackHours * 60 * 60 * 1000 : 0;
-
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i] as Record<string, unknown>;
-    const listingType = String(it.ListingType ?? it.listingType ?? "").trim();
-    if (listingType === "Chinese" || listingType === "Auction") continue;
-
-    const listingDetails = it.ListingDetails as Record<string, unknown> | undefined;
-    const startTimeRaw = listingDetails?.StartTime ?? listingDetails?.startTime;
-    const startTimeMs = startTimeRaw != null ? new Date(String(startTimeRaw)).getTime() : 0;
-    if (cutoffMs > 0 && startTimeMs > 0 && startTimeMs < cutoffMs) continue;
-
-    const itemId = String(it.ItemID ?? it.itemID ?? "").trim() || `ebay-trading-${i}`;
-    const title = String(it.Title ?? "").trim() || itemId || "eBay item";
-    const descRaw = it.Description ?? it.description;
-    const desc = typeof descRaw === "string" ? descRaw.trim() : (descRaw && typeof (descRaw as Record<string, unknown>)["#text"] === "string" ? String((descRaw as Record<string, string>)["#text"]).trim() : "");
-    const qty = Math.max(0, Math.floor(Number(it.QuantityAvailable ?? it.Quantity ?? 0) || 0));
-    const priceVal = it.BuyItNowPrice ?? it.StartPrice ?? it.CurrentPrice ?? 0;
-    const price = parsePrice(priceVal);
-    const pic = it.PictureDetails as Record<string, unknown> | undefined;
-    let imgUrl = String(pic?.GalleryURL ?? "").trim();
-    if (!imgUrl && Array.isArray(pic?.PictureURL)) imgUrl = String((pic.PictureURL as string[])[0] ?? "").trim();
-    else if (!imgUrl && typeof pic?.PictureURL === "string") imgUrl = pic.PictureURL.trim();
-    imgUrl = ebayImageToHighRes(imgUrl);
-    const images = imgUrl ? [imgUrl] : [];
-
-    products.push({
-      title,
-      description: desc,
-      images,
-      sku: itemId,
-      quantity: qty,
-      price,
-      source_id: itemId,
-    });
-  }
-
-  // eslint-disable-next-line no-console
-  console.log("[ebay] Trading API fallback", {
-    count: products.length,
-    lookbackHours: cutoffMs > 0 ? lookbackHours : "all-active",
-  });
-  return products;
+  if (!res.ok) throw new Error(`eBay Trading API error: ${res.status} ${text.slice(0, 200)}`);
+  return text;
 }
 
-/** Retorna todos os ItemIDs atualmente ativos na conta (Trading API ActiveList, sem filtro de 24h). */
-export async function getActiveEbayItemIds(): Promise<string[]> {
-  if (!isEbayConfigured()) return [];
-  try {
-    const token = await getEbayAccessToken();
-    const baseUrl = getEbayBaseUrl();
-    const url = `${baseUrl}/ws/api.dll`;
+/** Lista todos os anúncios ativos (GetMyeBaySelling), com paginação — espelho completo, sem filtro de data. */
+async function fetchAllActiveTradingItems(): Promise<Record<string, unknown>[]> {
+  const entriesPerPage = 200;
+  const allItems: Record<string, unknown>[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
     const xmlBody = `<?xml version="1.0" encoding="utf-8"?>
 <GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-  <ActiveList><Include>true</Include><Pagination><EntriesPerPage>200</EntriesPerPage><PageNumber>1</PageNumber></Pagination></ActiveList>
+  <ActiveList><Include>true</Include><Pagination><EntriesPerPage>${entriesPerPage}</EntriesPerPage><PageNumber>${page}</PageNumber></Pagination></ActiveList>
   <DetailLevel>ReturnAll</DetailLevel>
 </GetMyeBaySellingRequest>`;
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        "X-EBAY-API-IAF-TOKEN": token,
-        "X-EBAY-API-CALL-NAME": "GetMyeBaySelling",
-        "X-EBAY-API-SITEID": "0",
-        "X-EBAY-API-COMPATIBILITY-LEVEL": "1311",
-        "Accept-Language": "en-US",
-      },
-      body: xmlBody,
-    });
-
-    const text = await res.text();
-    if (!res.ok) return [];
-
+    const text = await ebayTradingPost("GetMyeBaySelling", xmlBody);
     const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
     const parsed = parser.parse(text) as Record<string, unknown>;
     const resp = (parsed.GetMyeBaySellingResponse ?? parsed.getMyeBaySellingResponse) as {
-      ActiveList?: { ItemArray?: { Item?: Record<string, unknown> | Record<string, unknown>[] } };
+      ActiveList?: {
+        ItemArray?: { Item?: Record<string, unknown> | Record<string, unknown>[] };
+        PaginationResult?: { TotalNumberOfPages?: number | string; TotalNumberOfEntries?: number | string };
+      };
+      Errors?: { ShortMessage?: string } | { ShortMessage?: string }[];
     } | undefined;
-    const itemArray = resp?.ActiveList?.ItemArray?.Item;
-    if (!itemArray) return [];
 
-    const items = Array.isArray(itemArray) ? itemArray : [itemArray];
+    const activeList = resp?.ActiveList;
+    const itemArray = activeList?.ItemArray?.Item;
+    if (!itemArray && page === 1) {
+      const errRaw = resp?.Errors;
+      const errMsg = Array.isArray(errRaw)
+        ? errRaw[0]?.ShortMessage
+        : errRaw?.ShortMessage;
+      if (errMsg) throw new Error(`eBay Trading API: ${errMsg}`);
+      return [];
+    }
+
+    if (itemArray) {
+      const chunk = Array.isArray(itemArray) ? itemArray : [itemArray];
+      allItems.push(...chunk);
+    }
+
+    const pag = activeList?.PaginationResult;
+    const pages = Number(pag?.TotalNumberOfPages ?? 1);
+    totalPages = Number.isFinite(pages) && pages > 0 ? pages : 1;
+    page += 1;
+  }
+
+  return allItems;
+}
+
+function tradingItemToEbayProduct(it: Record<string, unknown>, index: number): EbayProduct | null {
+  const listingType = String(it.ListingType ?? it.listingType ?? "").trim();
+  if (listingType === "Chinese" || listingType === "Auction") return null;
+
+  const itemId = String(it.ItemID ?? it.itemID ?? "").trim() || `ebay-trading-${index}`;
+  const skuField = String(it.SKU ?? it.sku ?? "").trim();
+  const title = String(it.Title ?? "").trim() || itemId || "eBay item";
+  const descRaw = it.Description ?? it.description;
+  const desc =
+    typeof descRaw === "string"
+      ? descRaw.trim()
+      : descRaw && typeof (descRaw as Record<string, unknown>)["#text"] === "string"
+        ? String((descRaw as Record<string, string>)["#text"]).trim()
+        : "";
+  const qty = Math.max(0, Math.floor(Number(it.QuantityAvailable ?? it.Quantity ?? 0) || 0));
+  const priceVal = it.BuyItNowPrice ?? it.StartPrice ?? it.CurrentPrice ?? 0;
+  const price = parsePrice(priceVal);
+  const pic = it.PictureDetails as Record<string, unknown> | undefined;
+  let imgUrl = String(pic?.GalleryURL ?? "").trim();
+  if (!imgUrl && Array.isArray(pic?.PictureURL)) imgUrl = String((pic.PictureURL as string[])[0] ?? "").trim();
+  else if (!imgUrl && typeof pic?.PictureURL === "string") imgUrl = pic.PictureURL.trim();
+  imgUrl = ebayImageToHighRes(imgUrl);
+  const images = imgUrl ? [imgUrl] : [];
+
+  return {
+    title,
+    description: desc,
+    images,
+    sku: skuField || itemId,
+    quantity: qty,
+    price,
+    source_id: itemId,
+  };
+}
+
+/** Anúncios ativos via Trading API (fluxo clássico) — todos os itens ativos, paginados. */
+async function fetchEbayProductsFromTradingApi(): Promise<EbayProduct[]> {
+  const items = await fetchAllActiveTradingItems();
+  const products: EbayProduct[] = [];
+
+  for (let i = 0; i < items.length; i++) {
+    const product = tradingItemToEbayProduct(items[i], i);
+    if (product) products.push(product);
+  }
+
+  // eslint-disable-next-line no-console
+  console.log("[ebay] Trading API active listings", { raw: items.length, mapped: products.length });
+  return products;
+}
+
+function mergeEbayProductLists(primary: EbayProduct[], secondary: EbayProduct[]): EbayProduct[] {
+  const bySourceId = new Map<string, EbayProduct>();
+  const skuKeys = new Set<string>();
+
+  for (const p of primary) {
+    const sid = (p.source_id || p.sku || "").trim();
+    if (!sid) continue;
+    bySourceId.set(sid, p);
+    const sku = (p.sku || "").trim().toLowerCase();
+    if (sku) skuKeys.add(sku);
+  }
+
+  for (const p of secondary) {
+    const sid = (p.source_id || p.sku || "").trim();
+    if (!sid || bySourceId.has(sid)) continue;
+    const sku = (p.sku || "").trim().toLowerCase();
+    if (sku && skuKeys.has(sku)) continue;
+    bySourceId.set(sid, p);
+    if (sku) skuKeys.add(sku);
+  }
+
+  return Array.from(bySourceId.values());
+}
+
+/** Retorna todos os ItemIDs atualmente ativos na conta (Trading API ActiveList, paginado). */
+export async function getActiveEbayItemIds(): Promise<string[]> {
+  if (!isEbayConfigured()) return [];
+  try {
+    const items = await fetchAllActiveTradingItems();
     const ids: string[] = [];
     for (const it of items) {
-      const itemId = String((it as Record<string, unknown>).ItemID ?? (it as Record<string, unknown>).itemID ?? "").trim();
+      const itemId = String(it.ItemID ?? it.itemID ?? "").trim();
       if (itemId) ids.push(itemId);
     }
     return ids;
@@ -506,15 +542,10 @@ export async function removeUnavailableEbayProducts(): Promise<RemoveUnavailable
   return report;
 }
 
-export async function fetchEbayProducts(): Promise<EbayProduct[]> {
-  if (!isEbayConfigured()) return [];
-
+async function fetchEbayProductsFromInventoryApi(): Promise<EbayProduct[]> {
   const products: EbayProduct[] = [];
   let offset = 0;
   const limit = 50;
-
-  // eslint-disable-next-line no-console
-  console.log("[ebay] fetching inventory items", { limit });
 
   while (true) {
     type InventoryList = { inventoryItems?: { sku: string }[]; total?: number };
@@ -524,7 +555,6 @@ export async function fetchEbayProducts(): Promise<EbayProduct[]> {
     const skus = (list.inventoryItems || []).map((i) => i.sku).filter(Boolean);
     if (skus.length === 0) break;
 
-    // Fetch full item details per sku (keeps code simple and robust).
     for (const sku of skus) {
       const item = await ebayRequest<EbayInventoryItem>(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`);
       const title = item.product?.title?.trim() || sku;
@@ -553,19 +583,40 @@ export async function fetchEbayProducts(): Promise<EbayProduct[]> {
     if (typeof list.total === "number" && offset >= list.total) break;
   }
 
-  if (products.length === 0) {
-    try {
-      const fromTrading = await fetchEbayProductsFromTradingApi();
-      if (fromTrading.length > 0) return fromTrading;
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn("[ebay] Trading API fallback failed", e);
-    }
+  return products;
+}
+
+export async function fetchEbayProducts(): Promise<EbayProduct[]> {
+  if (!isEbayConfigured()) return [];
+
+  let fromTrading: EbayProduct[] = [];
+  try {
+    fromTrading = await fetchEbayProductsFromTradingApi();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("[ebay] Trading API fetch failed", e);
   }
 
+  let fromInventory: EbayProduct[] = [];
+  try {
+    // eslint-disable-next-line no-console
+    console.log("[ebay] fetching inventory items");
+    fromInventory = await fetchEbayProductsFromInventoryApi();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("[ebay] Inventory API fetch failed", e);
+  }
+
+  const merged = mergeEbayProductLists(fromTrading, fromInventory);
+
   // eslint-disable-next-line no-console
-  console.log("[ebay] fetched products", { count: products.length });
-  return products;
+  console.log("[ebay] fetched products (mirror)", {
+    trading: fromTrading.length,
+    inventory: fromInventory.length,
+    merged: merged.length,
+    discountPercent: getEbayMirrorDiscountRate() * 100,
+  });
+  return merged;
 }
 
 export async function fetchMockEbayProducts(): Promise<EbayProduct[]> {
@@ -584,26 +635,26 @@ export async function fetchMockEbayProducts(): Promise<EbayProduct[]> {
 
 function toDbProduct(p: EbayProduct) {
   const qty = Number.isFinite(p.quantity) ? Math.max(0, Math.floor(p.quantity)) : 0;
-  const price = Number.isFinite(p.price) ? Math.max(0, Number(p.price)) : 0;
+  const ebayPrice = Number.isFinite(p.price) ? Math.max(0, Number(p.price)) : 0;
+  const { storePrice, compareAtPrice } = applyEbayMirrorPricing(ebayPrice);
   const sourceId = (p.source_id || p.sku || "").trim();
   const sku = (p.sku || "").trim() || null;
   const allImages = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
   const images = allImages.length > 0 ? [allImages[0]] : [];
-  const compareAtPrice = price > 0 ? Math.round(price * 1.3 * 100) / 100 : null;
 
   return {
     // Existing site fields (só primeira imagem, título e descrição)
     name: p.title,
     description: p.description || "",
     category: "Rare Finds",
-    price_usd: price,
+    price_usd: storePrice,
     compare_at_price: compareAtPrice,
     stock_quantity: qty,
     images,
 
     // New sync-friendly fields
     title: p.title,
-    price,
+    price: storePrice,
     quantity: qty,
     sku,
     status: qty === 0 ? "sold" : "active",
@@ -641,7 +692,7 @@ export async function syncEbayProducts(params?: { dryRun?: boolean }): Promise<S
   }
   if (!products.length) {
     result.message =
-      "Nenhum item encontrado no inventário do eBay (conta conectada). O sync usa a API de Inventário do eBay — só aparecem itens criados no modelo Single SKU / Seller Hub.";
+      "Nenhum anúncio ativo encontrado no eBay (conta conectada). Verifique se há listagens ativas na sua conta e se a conexão OAuth está válida.";
     return result;
   }
 
@@ -802,16 +853,15 @@ export async function updateOnlyPrices(): Promise<UpdateOnlyReport> {
         report.notFound += 1;
         continue;
       }
-      const newPrice = item.price;
+      const { storePrice, compareAtPrice } = applyEbayMirrorPricing(item.price);
       const existingPrice = Number(row.price_usd) || 0;
-      if (existingPrice === newPrice) {
+      if (existingPrice === storePrice) {
         report.skipped += 1;
         continue;
       }
-      const compareAtPrice = Math.round(newPrice * 1.3 * 100) / 100;
       const { error: updErr } = await supabase
         .from("products")
-        .update({ price_usd: newPrice, compare_at_price: compareAtPrice })
+        .update({ price_usd: storePrice, compare_at_price: compareAtPrice })
         .eq("id", row.id);
       if (updErr) report.errors.push(`${sourceId}: ${updErr.message}`);
       else report.updated += 1;
